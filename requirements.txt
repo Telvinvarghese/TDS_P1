@@ -1,0 +1,6 @@
+uvicorn
+Flask
+fastapi
+openai
+requests
+sqlite3
