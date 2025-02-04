@@ -344,7 +344,7 @@ def a10():
 
 # run app
 @app.get("/")
-async def root():
+async def read_root():
     print("Successfully rendering app")
     return JSONResponse(content={"message": "Successfully rendering app"})
 
