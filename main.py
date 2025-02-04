@@ -586,5 +586,5 @@ async def b10(csvpath: str, column: str, value: str):
     return filter_csv(csvpath, column, value)
 
 if __name__ == "__main__":
-    import unicorn
-    unicorn.run(app,host="0.0.0.0",port=8000)
+    import uvicorn
+    uvicorn.run(app,host="0.0.0.0",port=8000)
