@@ -13,4 +13,4 @@ A detailed example of the tasks and the corresponding functions is as follows :
     8. /data/credit-card.png contains a credit card number. Pass the image to an LLM, have it extract the card number, and write it without spaces to /data/credit-card.txt. Function to be called : a8
     9. /data/comments.txt contains a list of comments, one per line. Using embeddings, find the most similar pair of comments and write them to /data/comments-similar.txt. Function to be called : a9
     10. The SQLite database file /data/ticket-sales.db has a tickets with columns type, units, and price. Each row is a customer bid for a concert ticket. What is the total sales of all the items in the "Gold" ticket type? Write the number in /data/ticket-sales-gold.txt. Function to be called : a10
-"""
+    """
