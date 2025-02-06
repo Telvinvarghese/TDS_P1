@@ -28,6 +28,10 @@ import json
 from vosk import Model, KaldiRecognizer
 from fastapi.middleware.cors import CORSMiddleware
 
+from dotenv import load_dotenv
+# Load environment variables from .env file
+load_dotenv()
+
 # Initialize FastAPI app
 app = FastAPI()
 
