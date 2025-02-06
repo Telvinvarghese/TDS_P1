@@ -49,7 +49,8 @@ root_path = os.getcwd()
 openai_api_key = os.getenv('AIPROXY_TOKEN')
 if not openai_api_key:
     print("openai_api_key missing")
-
+else:
+    print("API key set successfully")
 BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
 headers = {
