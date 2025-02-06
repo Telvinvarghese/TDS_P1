@@ -86,6 +86,22 @@ async def query_gpt(prompt: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error.")
 
+def download_datagen(url, filename):
+    """
+    Downloads a file from a given URL and saves it locally.
+
+    :param url: The URL of the file to download.
+    :param filename: The local filename to save the file as.
+    """
+    response = requests.get("https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/datagen.py", stream=True)
+    if response.status_code == 200:
+        with open("datagen.py", 'wb') as file:
+            for chunk in response.iter_content(1024):
+                file.write(chunk)
+        print(f"Download complete: datagen.py")
+    else:
+        print(f"Failed to download file. Status code: {response.status_code}")
+        
 def a1(user_email: str):
     """Install uvicorn, download datagen.py if missing, and run it."""
     try:
@@ -593,4 +609,5 @@ async def b10(csvpath: str, column: str, value: str):
 # Entry point for running the server
 if __name__ == "__main__":
     import uvicorn
+    download_datagen()
     uvicorn.run(app, host="0.0.0.0", port=8000)
