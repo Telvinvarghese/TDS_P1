@@ -1026,7 +1026,9 @@ async def startup_event():
             urllib.request.urlretrieve(script_url, script_name)
         # Ensure the script has execute permissions (for Linux/macOS)
         os.chmod(script_name, 0o755)
-    
+       return {"message": "Success!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {e}")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
