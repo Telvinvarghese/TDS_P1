@@ -384,8 +384,9 @@ def a1(script_url: str, user_email: str):
         subprocess.run([sys.executable, "-m", "pip",
                        "install", "uvicorn"], check=True)
         if not os.path.exists(script_name):
-            urllib.request.urlretrieve(
-                script_url, script_name)
+            urllib.request.urlretrieve(script_url, script_name)
+        # Ensure the script has execute permissions (for Linux/macOS)
+        os.chmod(script_name, 0o755)
         subprocess.run([sys.executable, script_name,user_email, "--root", "./data"], check=True)
         return {"message": "Success!"}
     except Exception as e:
@@ -1011,6 +1012,20 @@ async def read_file(request: Request):
         return Response(content, media_type="text/plain", status_code=200)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+# FastAPI startup event
+@app.on_event("startup")
+async def startup_event():
+    script_url = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
+    """Install uvicorn, download script if missing"""
+    script_name = os.path.basename(urlparse(script_url).path)
+    try:
+        subprocess.run([sys.executable, "-m", "pip",
+                       "install", "uvicorn"], check=True)
+        if not os.path.exists(script_name):
+            urllib.request.urlretrieve(script_url, script_name)
+        # Ensure the script has execute permissions (for Linux/macOS)
+        os.chmod(script_name, 0o755)
     
 if __name__ == "__main__":
     import uvicorn
