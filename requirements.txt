@@ -39,3 +39,5 @@ urllib3==2.3.0
 uvicorn==0.34.0
 vosk==0.3.45
 websockets==14.2
+# Logging utilities
+loguru==0.7.2  # Advanced logging
