@@ -574,15 +574,16 @@ async def a5(input_dir: str, input_file_type: str, output_file: str):
             status_code=400, detail=f"Error occurred: {str(e)}")
 
 
-async def a6(input_dir: str, output_file: str):
+async def a6(input_dir: str, input_file_type: str, output_file: str):
     # input_dir, output_file = "/data/docs/", "/data/docs/index.json"
+    # input_file_type=".md"
     await b1(input_dir)
     await b1(output_file)
     input_dir, output_file = root_path+input_dir, root_path+output_file
     file_titles = {}
     for root, _, files in os.walk(input_dir):
         for file in files:
-            if file.endswith(".md"):
+            if file.endswith(input_file_type):
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
