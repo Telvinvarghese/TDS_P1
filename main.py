@@ -22,7 +22,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 import base64
 import requests
 import sqlite3
-from typing import List,Dict, Any
+from typing import List, Dict, Any
 import csv
 import markdown2
 from pydantic import BaseModel  # type: ignore
@@ -39,11 +39,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["GET","POST"],  # Allows all methods
+    allow_methods=["GET", "POST"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
 
 # run app
+
+
 @app.get("/")
 async def root():
     print("Successfully rendering app")
@@ -87,6 +89,7 @@ TASKS = {
 
 # 🔹 Step 1: Task input to English (LLM-Based)
 
+
 async def translate_to_english(client, user_input: str) -> str:
     """
     Uses GPT to translate user input to English.
@@ -121,6 +124,7 @@ async def translate_to_english(client, user_input: str) -> str:
         return f"Unexpected error: {str(e)}"
 
 # 🔹 Step 2: Task Classification (LLM-Based)
+
 
 async def classify_task_async(client, user_input: str) -> str:
     """
@@ -159,7 +163,8 @@ async def classify_task_async(client, user_input: str) -> str:
 
 # 🔹 Step 3: Parameter Extraction
 
-async def extract_parameters_with_llm(client, task_id: str, query: str) -> Dict[str,Any]:
+
+async def extract_parameters_with_llm(client, task_id: str, query: str) -> Dict[str, Any]:
     """
     Uses GPT-4o-mini to extract relevant parameters for any given task.
     """
@@ -265,6 +270,7 @@ async def extract_parameters_with_llm(client, task_id: str, query: str) -> Dict[
 
 # 🔹 Step 4: Task Execution
 
+
 async def execute_task(task_id: str, parameters: Dict[str, str]):
     """
     Executes the task based on its category and parameters.
@@ -276,20 +282,20 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
         a2(parameters["prettier_version"], parameters["input_file"])
 
     elif task_id == "A3":
-        await a3(parameters["input_file"],parameters["day_of_week"], parameters["output_file"])
+        await a3(parameters["input_file"], parameters["day_of_week"], parameters["output_file"])
 
     elif task_id == "A4":
-        await a4(parameters["input_file"], parameters["sort_keys"],parameters["output_file"])
-        
+        await a4(parameters["input_file"], parameters["sort_keys"], parameters["output_file"])
+
     elif task_id == "A5":
-        await a5(parameters["input_dir"], parameters["input_file_type"],parameters["output_file"])
+        await a5(parameters["input_dir"], parameters["input_file_type"], parameters["output_file"])
 
     elif task_id == "A6":
-        await a6(parameters["input_dir"], parameters["input_file_type"],parameters["output_file"])
+        await a6(parameters["input_dir"], parameters["input_file_type"], parameters["output_file"])
 
     elif task_id == "A7":
         await a7(parameters["input_file"], parameters["output_file"])
-    
+
     elif task_id == "A8":
         await a8(parameters["image_file"], parameters["output_file"])
 
@@ -297,10 +303,10 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
         await a9(parameters["input_file"], parameters["output_file"])
 
     elif task_id == "A10":
-        await a10(parameters["database_file"],parameters["ticket_type"], parameters["output_file"])
+        await a10(parameters["database_file"], parameters["ticket_type"], parameters["output_file"])
 
     elif task_id == "B3":
-        await b3(parameters["method"], parameters["url"],parameters["output_file"])
+        await b3(parameters["method"], parameters["url"], parameters["output_file"])
 
     elif task_id == "B4":
         await b4(parameters["repo_url"], parameters["file_name"], parameters["content"], parameters["commit_message"])
@@ -326,6 +332,8 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
 # 🔹 Step 5: Orchestrate Everything
 
 # run task API
+
+
 async def query_llm(task: str):
     """
     Processes a user query by:
@@ -333,7 +341,7 @@ async def query_llm(task: str):
     2. Classifying the task
     3. Extracting relevant parameters
     4. Executing the task
-    
+
     Returns a response indicating success or failure.
     """
 
@@ -361,6 +369,7 @@ async def query_llm(task: str):
         print(f"✅ Task {task_id} executed successfully!")
         return Response(f"✅ Task {task_id} executed successfully!", status_code=200)
 
+
 @app.post("/run")
 async def run_task(request: Request):
     task = request.query_params.get('task', '')
@@ -376,6 +385,8 @@ async def run_task(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 # task A1 to A10
+
+
 def a1(script_url: str, user_email: str):
     # script_url = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
     """Install uvicorn, download script if missing, and run it."""
@@ -387,10 +398,12 @@ def a1(script_url: str, user_email: str):
             urllib.request.urlretrieve(script_url, script_name)
         # Ensure the script has execute permissions (for Linux/macOS)
         os.chmod(script_name, 0o755)
-        subprocess.run([sys.executable, script_name,user_email, "--root", "./data"], check=True)
+        subprocess.run([sys.executable, script_name, user_email,
+                       "--root", "./data"], check=True)
         return {"message": "Success!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
+
 
 def get_prettier_parser(file_path):
     """Determine the appropriate Prettier parser based on file type."""
@@ -412,6 +425,7 @@ def get_prettier_parser(file_path):
     ext = Path(file_path).suffix  # Get file extension
     return ext_to_parser.get(ext, None)  # Return parser or None if not found
 
+
 def a2(prettier_version: str, input_file: str):
     """Run Prettier on the given file with the appropriate parser."""
     parser = get_prettier_parser(input_file)
@@ -430,13 +444,15 @@ def a2(prettier_version: str, input_file: str):
         return
     try:
         # Use npx to run a specific version of Prettier (e.g., 3.4.2)
-        result=subprocess.run(
+        result = subprocess.run(
             ["npx", f"prettier@{prettier_version}", "--write", input_file, "--parser", parser], check=True, text=True, capture_output=True)
         print(f"✅ File formatted successfully: {input_file}")
         return result.stdout
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Error formatting the file: {e}")
-    
+        raise HTTPException(
+            status_code=500, detail=f"Error formatting the file: {e}")
+
+
 # List of possible date formats
 DATE_FORMATS = [
     "%Y-%m-%d",          # 2014-12-29
@@ -452,6 +468,7 @@ WEEKDAY_MAP = {
     "Friday": 4, "Saturday": 5, "Sunday": 6
 }
 
+
 def parse_date(date_str):
     """Try parsing a date string with multiple formats."""
     for fmt in DATE_FORMATS:
@@ -460,6 +477,7 @@ def parse_date(date_str):
         except ValueError:
             continue  # Try next format
     raise ValueError(f"Unsupported date format: {date_str}")
+
 
 async def a3(input_file: str, day_of_week: str, output_file: str):
     # input_file, output_file = "/data/dates.txt", "/data/dates-wednesdays.txt"
@@ -498,6 +516,7 @@ async def a3(input_file: str, day_of_week: str, output_file: str):
         raise HTTPException(
             status_code=400, detail=f"Invalid date format: {str(e)}")
 
+
 async def a4(input_file: str, sort_keys: list, output_file: str):
     # input_file, output_file = "/data/contacts.json", "/data/contacts-sorted.json"
     # sort_keys=['last_name', 'first_name']
@@ -522,6 +541,7 @@ async def a4(input_file: str, sort_keys: list, output_file: str):
         raise HTTPException(
             status_code=400, detail=f"Invalid file content: {str(e)}")
 
+
 async def a5(input_dir: str, input_file_type: str, output_file: str):
     # input_dir, output_file = '/data/logs', '/data/logs-recent.txt'
     await b1(input_dir)
@@ -532,7 +552,8 @@ async def a5(input_dir: str, input_file_type: str, output_file: str):
             status_code=404, detail=f"Directory not found: {input_dir}")
     try:
         log_files = sorted(
-            (file for file in os.listdir(input_dir) if file.endswith(input_file_type)),
+            (file for file in os.listdir(input_dir)
+             if file.endswith(input_file_type)),
             key=lambda file: os.path.getmtime(os.path.join(input_dir, file)),
             reverse=True)
         recent_lines = []
@@ -548,6 +569,7 @@ async def a5(input_dir: str, input_file_type: str, output_file: str):
     except Exception as e:
         raise HTTPException(
             status_code=400, detail=f"Error occurred: {str(e)}")
+
 
 async def a6(input_dir: str, output_file: str):
     # input_dir, output_file = "/data/docs/", "/data/docs/index.json"
@@ -579,6 +601,7 @@ async def a6(input_dir: str, output_file: str):
     except Exception as e:
         print(f"Error while writing to index file {output_file}: {e}")
 
+
 async def a7(input_file: str, output_file: str):
     # input_file, output_file = "/data/email.txt", "/data/email-sender.txt"
     await b1(input_file)
@@ -608,6 +631,7 @@ async def a7(input_file: str, output_file: str):
             print("Sender's email not found.")
     except Exception as e:
         print(f"Error while writing to out file {output_file}: {e}")
+
 
 async def a8(image_file: str, output_file: str):
     # image_file = "/data/credit_card.png"
@@ -641,6 +665,7 @@ async def a8(image_file: str, output_file: str):
     else:
         print("Request failed with status code",
               response.status_code, response.text)
+
 
 async def a9(input_file: str, output_file: str):
     # input_file = "/data/comments.txt"
@@ -693,6 +718,7 @@ async def a9(input_file: str, output_file: str):
         return False
     return True
 
+
 async def a10(database_file: str, ticket_type: str, output_file: str):
     # database_file = "/data/ticket-sales.db"
     # output_file = "/data/ticket-sales-gold.txt"
@@ -722,10 +748,12 @@ async def b1(file_path: str):
     if not file_path.startswith("/data"):
         raise HTTPException(
             status_code=400, detail="Invalid file path. Data outside /data can't be accessed or exfiltrated.")
-    
+
+
 @app.delete("/delete")
 async def b2(request: Request):
     return JSONResponse({"error": "File deletion is not allowed."}, status_code=400)
+
 
 async def b3(method: str = "get", url: str = "", headers: dict = None, json_input: dict = None, output_file: str = None):
     """
@@ -771,6 +799,7 @@ async def b3(method: str = "get", url: str = "", headers: dict = None, json_inpu
     except Exception as e:
         return f"Unexpected error: {str(e)}"
 
+
 async def b4(repo_url: str, file_name: str, content: str, commit_message: str):
     # repo_url="https://github.com/username"
     # file_name="new_file.txt"
@@ -804,6 +833,7 @@ async def b4(repo_url: str, file_name: str, content: str, commit_message: str):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
+
 async def b5(query: str, database_file: str = "/data/ticket-sales.db", output_file: str = "/data/query_result.txt"):
     await b1(database_file)
     await b1(output_file)
@@ -833,6 +863,7 @@ async def b5(query: str, database_file: str = "/data/ticket-sales.db", output_fi
         raise HTTPException(
             status_code=400, detail=f"Error occurred: {str(e)}")
 
+
 async def b6(url: str, tag: str):
     # url = "https://www.iitm.ac.in/"
     # tag = "h1"
@@ -855,6 +886,7 @@ async def b6(url: str, tag: str):
     else:
         print(f"Failed to retrieve page: {response.status_code}")
     return True
+
 
 async def b7(input_file: str, output_file: str, quality: int = 85, resize: tuple = None) -> None:
     await b1(input_file)
@@ -907,6 +939,7 @@ async def b7(input_file: str, output_file: str, quality: int = 85, resize: tuple
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 async def b8(audio_file_path: str):
     await b1(audio_file_path)
     # You can use "tiny", "base", "small", "medium", or "large"
@@ -938,6 +971,7 @@ async def b8(audio_file_path: str):
     print(transcription)
     return transcription
 
+
 async def b9(markdown_file: str = "/data/markdown_file.md", html_file: str = "/data/html_file.html"):
     await b1(markdown_file)
     await b1(html_file)
@@ -954,6 +988,8 @@ async def b9(markdown_file: str = "/data/markdown_file.md", html_file: str = "/d
     return True
 
 # Pydantic model to define the structure of the filtered CSV rows
+
+
 class Row(BaseModel):
     id: int
     name: str
@@ -961,6 +997,8 @@ class Row(BaseModel):
     city: str
 
 # Function to handle CSV filtering logic
+
+
 def filter_csv(csv_path: str, column: str, value: str) -> List[Row]:
     # Check if the file exists
     if not os.path.exists(csv_path):
@@ -989,19 +1027,22 @@ def filter_csv(csv_path: str, column: str, value: str) -> List[Row]:
 # curl "http://127.0.0.1:8000/filter_csv?csvpath=/data/city.csv&column=city&value=New%20York"
 # Endpoint to filter CSV file by CSV path and filter conditions
 
+
 @app.get("/filter_csv", response_model=List[Row])
 async def b10(csv_file: str, column: str, value: str):
     await b1(csv_file)
     return filter_csv(csv_file, column, value)
 
 # read file API
+
+
 @app.get("/read")
 async def read_file(request: Request):
     file_path = request.query_params.get('path')
     # Ensure file path is safe
     await b1(file_path=file_path)
     full_file_path = root_path+file_path
-    print("reading file at ",full_file_path)
+    print("reading file at ", full_file_path)
     if not full_file_path:
         return JSONResponse({"error": "File path is missing."}, status_code=400)
     if not os.path.exists(full_file_path):
@@ -1014,6 +1055,8 @@ async def read_file(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 # FastAPI startup event
+
+
 @app.on_event("startup")
 async def startup_event():
     script_url = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
@@ -1026,9 +1069,10 @@ async def startup_event():
             urllib.request.urlretrieve(script_url, script_name)
         # Ensure the script has execute permissions (for Linux/macOS)
         os.chmod(script_name, 0o755)
-       return {"message": "Success!"}
+        return {"message": "Success!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
