@@ -395,14 +395,12 @@ def a1(script_url: str, user_email: str):
     """Install uvicorn, download script if missing, and run it."""
     script_name = os.path.basename(urlparse(script_url).path)
     try:
-        subprocess.run([sys.executable, "-m", "pip",
-                       "install", "uvicorn"], check=True)
+        subprocess.run([sys.executable, "-m", "pip","install", "uvicorn"], check=True)
         if not os.path.exists(script_name):
             urllib.request.urlretrieve(script_url, script_name)
         # Ensure the script has execute permissions (for Linux/macOS)
         os.chmod(script_name, 0o755)
-        subprocess.run([sys.executable, script_name, user_email,
-                       "--root", "./data"], check=True)
+        subprocess.run([sys.executable, script_name, user_email,"--root=./data"], check=True)
         return {"message": "Success!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
