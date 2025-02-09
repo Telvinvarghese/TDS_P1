@@ -6,6 +6,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 import urllib.request
 import httpx
+import asyncio
 import os
 import json
 import re
@@ -279,58 +280,58 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
     Executes the task based on its category and parameters.
     """
     if task_id == "A1":
-        a1(parameters["script_url"], parameters["user_email"])
+        a1(script_url=parameters["script_url"], user_email=parameters["user_email"])
 
     elif task_id == "A2":
-        a2(parameters["prettier_version"], parameters["input_file"])
+        a2(prettier_version=parameters["prettier_version"], input_file=parameters["input_file"])
 
     elif task_id == "A3":
-        await a3(parameters["input_file"], parameters["day_of_week"], parameters["output_file"])
+        await a3(input_file=parameters["input_file"], day_of_week=parameters["day_of_week"], output_file=parameters["output_file"])
 
     elif task_id == "A4":
-        await a4(parameters["input_file"], parameters["sort_keys"], parameters["output_file"])
+        await a4(input_file=parameters["input_file"], sort_keys=parameters["sort_keys"], output_file=parameters["output_file"])
 
     elif task_id == "A5":
-        await a5(parameters["input_dir"], parameters["input_file_type"], parameters["output_file"])
+        await a5(input_dir=parameters["input_dir"], input_file_type=parameters["input_file_type"], output_file=parameters["output_file"])
 
     elif task_id == "A6":
-        await a6(parameters["input_dir"], parameters["input_file_type"], parameters["output_file"])
+        await a6(input_dir=parameters["input_dir"], input_file_type=parameters["input_file_type"], output_file=parameters["output_file"])
 
     elif task_id == "A7":
-        await a7(parameters["input_file"], parameters["output_file"])
+        await a7(input_file=parameters["input_file"], output_file=parameters["output_file"])
 
     elif task_id == "A8":
-        await a8(parameters["image_file"], parameters["output_file"])
+        await a8(image_file=parameters["image_file"], output_file=parameters["output_file"])
 
     elif task_id == "A9":
-        await a9(parameters["input_file"], parameters["output_file"])
+        await a9(input_file=parameters["input_file"], output_file=parameters["output_file"])
 
     elif task_id == "A10":
-        await a10(parameters["database_file"], parameters["ticket_type"], parameters["output_file"])
+        await a10(database_file=parameters["database_file"], ticket_type=parameters["ticket_type"], output_file=parameters["output_file"])
 
     elif task_id == "B3":
-        await b3(parameters["method"], parameters["url"], parameters["output_file"])
+        await b3(method=parameters["method"], url=parameters["url"], output_file=parameters["output_file"])
 
     elif task_id == "B4":
-        await b4(parameters["repo_url"], parameters["file_name"], parameters["content"], parameters["commit_message"])
+        await b4(repo_url=parameters["repo_url"], file_name=parameters["file_name"], content=parameters["content"], commit_message=parameters["commit_message"])
 
     elif task_id == "B5":
-        await b5(parameters["query"], parameters["database_file"], parameters["output_file"])
+        await b5(query=parameters["query"], database_file=parameters["database_file"], output_file=parameters["output_file"])
 
     elif task_id == "B6":
-        await b6(parameters["url"], parameters["tag"])
+        await b6(url=parameters["url"], tag=parameters["tag"])
 
     elif task_id == "B7":
-        await b7(parameters["input_file"], parameters["output_file"])
+        await b7(input_file=parameters["input_file"], output_file=parameters["output_file"])
 
     elif task_id == "B8":
-        await b8(parameters["audio_file_path"])
+        await b8(audio_file_path=parameters["audio_file_path"])
 
     elif task_id == "B9":
-        await b9(parameters["markdown_file"], parameters["html_file"])
+        await b9(markdown_file=parameters["markdown_file"], html_file=parameters["html_file"])
 
     elif task_id == "B10":
-        await b10(parameters["csv_file"], parameters["column"], parameters["value"])
+        await b10(csv_file=parameters["csv_file"], column=parameters["column"], value=parameters["value"])
 
 # 🔹 Step 5: Orchestrate Everything
 async def query_llm(task: str):
@@ -761,7 +762,7 @@ async def b2(request: Request):
     return JSONResponse({"error": "File deletion is not allowed."}, status_code=400)
 
 
-async def b3(method: str = "get", url: str = "", headers: dict = None, json_input: dict = None, output_file: str = None):
+async def b3(method: str = "get", url: str = "", headers: dict = None, json_input: dict = None, output_file: str = None, ):
     """
     Asynchronous function to make an HTTP request.
 
@@ -783,20 +784,28 @@ async def b3(method: str = "get", url: str = "", headers: dict = None, json_inpu
                 headers=headers,
                 json=json_input
             )
-
             response.raise_for_status()  # Raise error for non-2xx status codes
 
-            # If an output file is specified, save the response content to a file
-            if output_file:
-                with open(output_file, "wb") as f:
-                    f.write(response.content)
-                return f"Response saved to {output_file}"
-
-            # Try to return JSON response, otherwise return text
+            await b1(output_file)
+            # Try to parse response as JSON
             try:
-                return response.json()
-            except ValueError:
-                return response.text
+                content = response.json()
+            except json.JSONDecodeError:
+                content = response.text
+
+            # Save response to a file if requested
+            if output_file:
+                output_file_path = root_path+output_file
+
+                with open(output_file_path, "w", encoding="utf-8") as f:
+                    if isinstance(content, dict):
+                        json.dump(content, f, indent=4)
+                    else:
+                        f.write(content)
+
+                print(f"Response saved to {output_file_path}")
+
+            return content  # Return response content
 
     except httpx.HTTPStatusError as e:
         return f"HTTP error: {e.response.status_code} - {e.response.text}"
