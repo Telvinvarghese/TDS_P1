@@ -333,10 +333,6 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
         await b10(parameters["csv_file"], parameters["column"], parameters["value"])
 
 # 🔹 Step 5: Orchestrate Everything
-
-# run task API
-
-
 async def query_llm(task: str):
     """
     Processes a user query by:
@@ -349,30 +345,40 @@ async def query_llm(task: str):
     """
 
     task = task.replace("`", "").replace('"', "")  # Clean task input
+    print(f"Received Task: {task}")
 
-    async with httpx.AsyncClient() as client:
-        # 🔹 Step 1: Translate query to English
-        eng_task = await translate_to_english(client, task)
-        print("📝 Task in English:", eng_task)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # 🔹 Step 1: Translate query to English
+            eng_task = await translate_to_english(client, task)
+            print(f"📝 Task in English: {eng_task}")
 
-        # 🔹 Step 2: Classify the task
-        task_id = await classify_task_async(client, eng_task)
-        print("📌 Task ID:", task_id)
+            # 🔹 Step 2: Classify the task
+            task_id = await classify_task_async(client, eng_task)
+            print(f"📌 Task ID: {task_id}")
 
-        if task_id == "Unknown":
-            return Response("❌ Unknown Task", status_code=404)
+            if task_id == "Unknown":
+                return Response("❌ Unknown Task", status_code=404)
 
-        # 🔹 Step 3: Extract parameters using LLM
-        parameters = await extract_parameters_with_llm(client, task_id, eng_task)
-        print("📦 Extracted Parameters:", parameters)
+            # 🔹 Step 3: Extract parameters using LLM
+            parameters = await extract_parameters_with_llm(client, task_id, eng_task)
+            print(f"📦 Extracted Parameters: {parameters}")
 
-        # 🔹 Step 4: Execute the task
-        execution_result = await execute_task(task_id, parameters)
+            # 🔹 Step 4: Execute the task
+            execution_result = await execute_task(task_id, parameters)
 
-        print(f"✅ Task {task_id} executed successfully!")
-        return Response(f"✅ Task {task_id} executed successfully!", status_code=200)
+            print(f"✅ Task {task_id} executed successfully!")
+            return Response(f"✅ Task {task_id} executed successfully!", status_code=200)
 
+    except httpx.HTTPError as e:
+        print(f"❌ HTTP error occurred: {e}")
+        return Response("❌ Failed due to a network error", status_code=500)
 
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")
+        return Response("❌ An unexpected error occurred", status_code=500)
+        
+# run task API
 @app.post("/run")
 async def run_task(request: Request):
     task = request.query_params.get('task', '')
@@ -388,8 +394,6 @@ async def run_task(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 # task A1 to A10
-
-
 def a1(script_url: str, user_email: str):
     # script_url = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
     """Install uvicorn, download script if missing, and run it."""
