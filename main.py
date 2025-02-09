@@ -56,9 +56,12 @@ root_path = os.getcwd()
 # 🔹 OpenAI API Endpoint
 BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1"
 
+
 openai_api_key = os.getenv('AIPROXY_TOKEN')
 if not openai_api_key:
     print("openai_api_key missing")
+else:
+    print("openai_api_key : ",openai_api_key)
 
 headers = {
     "Content-Type": "application/json",
@@ -98,7 +101,7 @@ async def translate_to_english(client, user_input: str) -> str:
         response = await client.post(
             BASE_URL + "/chat/completions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {openai_api_key}",
                 "Content-Type": "application/json",
             },
             json={
@@ -134,7 +137,7 @@ async def classify_task_async(client, user_input: str) -> str:
         response = await client.post(
             BASE_URL + "/chat/completions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {openai_api_key}",
                 "Content-Type": "application/json",
             },
             json={
@@ -172,7 +175,7 @@ async def extract_parameters_with_llm(client, task_id: str, query: str) -> Dict[
         response = await client.post(
             BASE_URL + "/chat/completions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {openai_api_key}",
                 "Content-Type": "application/json",
             },
             json={
