@@ -334,6 +334,11 @@ async def execute_task(task_id: str, parameters: Dict[str, str]):
         await b10(csv_file=parameters["csv_file"], column=parameters["column"], value=parameters["value"])
 
 # 🔹 Step 5: Orchestrate Everything
+async def is_english_string(text):
+    # Matches only ASCII characters (English letters, numbers, symbols)
+    pattern = r"^[\x00-\x7F]+$"
+    return bool(re.match(pattern, text))
+
 async def query_llm(task: str):
     """
     Processes a user query by:
@@ -351,8 +356,12 @@ async def query_llm(task: str):
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # 🔹 Step 1: Translate query to English
-            eng_task = await translate_to_english(client, task)
-            print(f"📝 Task in English: {eng_task}")
+            if not await is_english_string(task):
+                eng_task = await translate_to_english(client, task)
+                print(f"📝 Task in English: {eng_task}")
+            else:
+                eng_task = task
+                print(f"📝 Task is Already in English: {eng_task}")
 
             # 🔹 Step 2: Classify the task
             task_id = await classify_task_async(client, eng_task)
