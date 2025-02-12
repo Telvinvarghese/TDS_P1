@@ -93,13 +93,20 @@ async def parse_task_with_llm(task_description: str) -> str:
             )
             response.raise_for_status()
 
+            # Log the raw response for debugging purposes
+            response_json = response.json()
+            print(response_json)  # Add this line for debugging
+
             # Log cost usage (ensure this function exists)
             write_cost_response(response)
 
-            # Extract the response
-            script_code = response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            # Ensure the response contains the expected structure
+            if 'choices' not in response_json or len(response_json['choices']) == 0:
+                raise ValueError("Invalid response: 'choices' key is missing or empty")
+
+            script_code = response_json['choices'][0].get('message', {}).get('content', "").strip()
             if not script_code:
-                raise ValueError("Empty response from LLM")
+                raise ValueError("Empty script content in response")
 
             # Security check
             if not is_script_safe(script_code):
@@ -109,8 +116,12 @@ async def parse_task_with_llm(task_description: str) -> str:
 
         except httpx.HTTPStatusError as http_err:
             raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
+        except httpx.TimeoutException as timeout_err:
+            raise HTTPException(status_code=408, detail=f"Request timed out: {timeout_err}")
+        except httpx.TooManyRequests as rate_limit_err:
+            raise HTTPException(status_code=429, detail=f"Rate limit exceeded: {rate_limit_err}")
         except Exception as e:
-            print(f"Error parsing response: {str(e)}")  # Use logging in production
+            print(f"Error parsing response: {str(e)}")  # Log the error
             raise HTTPException(status_code=500, detail="Error parsing LLM response")
 
 def save_script(script_code: str) -> str:
