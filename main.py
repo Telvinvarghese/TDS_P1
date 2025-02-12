@@ -124,10 +124,10 @@ def run_script(filename: str):
 
 
 def download_and_run_script(script_url: str, user_email: str):
-    """Download a script from a URL, save it in /app, and execute it."""
+    """Download a script from a URL, save it in /tmp, and execute it."""
     
     script_name = os.path.basename(urlparse(script_url).path)
-    script_path = os.path.abspath(os.path.join("/", script_name))
+    script_path = os.path.abspath(os.path.join("/tmp", script_name))
 
     try:
         # ✅ Ensure `uvicorn` is installed
