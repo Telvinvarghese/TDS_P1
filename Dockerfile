@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy and install dependencies separately for better caching
 COPY requirements.txt .
 
+# Install `uv`
+RUN pip install uv
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the application code
