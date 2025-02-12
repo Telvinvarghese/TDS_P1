@@ -441,9 +441,8 @@ def get_prettier_parser(file_path):
     return ext_to_parser.get(ext, None)  # Return parser or None if not found
 
 
-async def a2(prettier_version: str, input_file: str):
+def a2(prettier_version: str, input_file: str):
     """Run Prettier on the given file with the appropriate parser."""
-    await b1(input_file)
     parser = get_prettier_parser(input_file)
     # input_file = "/data/format.md"
     # prettier_version = "3.4.2"

@@ -18,3 +18,7 @@ __pycache__/
 # Ignore log and temp files (optional)
 *.log
 *.tmp
+
+# Unwanted file
+cost.txt
+test.py
