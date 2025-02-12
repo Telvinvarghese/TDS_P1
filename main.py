@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 import subprocess
-import os,json
+import os
+import json
 import sys
 import urllib.request
 from urllib.parse import urlparse
@@ -9,6 +12,26 @@ import uuid
 import re
 
 app = FastAPI()
+
+# Add CORS middleware to allow cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+# run app
+
+
+@app.get("/")
+async def root():
+    try:
+        print("Successfully rendering app")
+        return JSONResponse(content={"message": "Successfully rendering app"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 API_KEY = os.getenv("AIPROXY_TOKEN")
 BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1"
