@@ -76,28 +76,42 @@ def is_script_safe(script_code: str) -> bool:
 
 async def parse_task_with_llm(task_description: str) -> str:
     """Generate a Python script for a given task, enforcing security constraints."""
+    
     async with httpx.AsyncClient() as client:
-        response = await client.post(
-            BASE_URL + "/chat/completions",
-            headers=headers,
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": "Generate a Python script that strictly operates only in /data/."},
-                    {"role": "user", "content": task_description}
-                ],
-                "temperature": 0.2
-            }
-        )
-        response.raise_for_status()
-        write_cost_response(response)
-        script_code = response.json()["choices"][0]["message"]["content"]
+        try:
+            response = await client.post(
+                BASE_URL + "/chat/completions",
+                headers=headers,
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "Generate a Python script that strictly operates only in /data/."},
+                        {"role": "user", "content": task_description}
+                    ],
+                    "temperature": 0.2
+                }
+            )
+            response.raise_for_status()
 
-        if not is_script_safe(script_code):
-            raise HTTPException(status_code=400, detail="Generated script contains unsafe operations.")
+            # Log cost usage (ensure this function exists)
+            write_cost_response(response)
 
-        return script_code.strip()
+            # Extract the response
+            script_code = response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            if not script_code:
+                raise ValueError("Empty response from LLM")
 
+            # Security check
+            if not is_script_safe(script_code):
+                raise HTTPException(status_code=400, detail="Generated script contains unsafe operations.")
+
+            return script_code
+
+        except httpx.HTTPStatusError as http_err:
+            raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
+        except Exception as e:
+            print(f"Error parsing response: {str(e)}")  # Use logging in production
+            raise HTTPException(status_code=500, detail="Error parsing LLM response")
 
 def save_script(script_code: str) -> str:
     """Save the generated script securely to /data/."""
