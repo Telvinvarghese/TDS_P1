@@ -76,8 +76,8 @@ def is_script_safe(script_code: str) -> bool:
 
 async def parse_task_with_llm(task_description: str) -> str:
     """Generate a Python script for a given task, enforcing security constraints."""
-    
-    async with httpx.AsyncClient() as client:
+    timeout = httpx.Timeout(20.0)  # Set the timeout to 20 seconds or as needed
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
