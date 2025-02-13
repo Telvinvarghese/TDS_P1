@@ -189,24 +189,34 @@ def execute_script(script_path: str) -> str:
 async def run_task(task: str = Query(..., description="Task description in plain English")):
     url_match = re.search(r"https?://[^\s]+\.py", task)
     email_match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", task)
+    
     if url_match and email_match:
         return await download_and_run_script(url_match.group(0), email_match.group(0))
+
     try:
         translated_task = await translate_to_english(task)
         task_description = translated_task["output"]
-        script_code = await generate_python_script(task_description)
-        script_path = save_script(script_code)
-        execution_output = execute_script(script_path)
-        if script_path and script_code:
-            result={
-            "status": "Success",
-            "script_path": script_path,
-            "output": execution_output}
-            return result
-        raise HTTPException(status_code=400, detail=result)
-    
-    except HTTPException:
-        raise
+        
+        max_retries = 3  # Maximum retries if script execution fails
+        for attempt in range(max_retries):
+            script_code = await generate_python_script(task_description)
+            script_path = save_script(script_code)
+            execution_output = execute_script(script_path)
+            
+            if "error" not in execution_output.lower():  # Check if execution was successful
+                return {
+                    "status": "Success",
+                    "script_path": script_path,
+                    "output": execution_output
+                }
+            
+            print(f"⚠️ Execution failed, retrying... ({attempt + 1}/{max_retries})")
+
+        # If all retries fail, return an error response
+        raise HTTPException(status_code=500, detail="Script execution failed after multiple attempts.")
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
         
