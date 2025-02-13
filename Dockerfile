@@ -25,8 +25,8 @@ COPY requirements.txt .
 # Verify requirements.txt exists
 RUN ls -lah /app/requirements.txt
 
-# Install dependencies using uv
-RUN uv pip install -r requirements.txt --verbose
+# Install dependencies using uv in system-wide mode
+RUN uv pip install --system -r requirements.txt --verbose
 
 # Copy the rest of the application
 COPY . .
