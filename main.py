@@ -113,53 +113,50 @@ def save_script(script_code: str) -> str:
         script_file.write(script_code)
     return filename
 
-# ✅ Run script asynchronously using `asyncio.create_subprocess_exec()`
-async def run_script(filename: str):
+def run_script(filename: str):
+    """Execute the generated script safely and capture output."""
     try:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, filename,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+        result = subprocess.run(
+            [sys.executable, filename],
+            capture_output=True,
+            text=True,
+            check=True
         )
-
-        stdout, stderr = await process.communicate()
-        if process.returncode == 0:
-            return {"status": "success", "output": stdout.decode().strip()}
-        else:
-            return {"status": "error", "output": stderr.decode().strip()}
-
+        return {"status": "success", "output": result.stdout.strip()}
+    except subprocess.CalledProcessError as e:
+        return {"status": "error", "output": e.stderr.strip()}
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
-# ✅ Download and run script (Fixed `async` handling)
-async def download_and_run_script(script_url: str, user_email: str):
+
+def download_and_run_script(script_url: str, user_email: str):
+    """Download a script from a URL, save it in /tmp, and execute it."""
+    
     script_name = os.path.basename(urlparse(script_url).path)
     script_path = os.path.abspath(os.path.join("/tmp", script_name))
+
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(script_url)
-            response.raise_for_status()
+        # ✅ Ensure `uvicorn` is installed
+        try:
+            import uvicorn
+        except ImportError:
+            subprocess.run([sys.executable, "-m", "pip", "install", "uvicorn"], check=True)
+
+        # ✅ Download the script safely
+        if not os.path.exists(script_path):
+            urllib.request.urlretrieve(script_url, script_path)
+
+        # ✅ Ensure script has execute permissions
+        os.chmod(script_path, 0o755)
+
+        # ✅ Run script with email argument
+        result = subprocess.run([sys.executable, script_path, user_email], capture_output=True, text=True, check=True)
         
-        with open(script_name, "w") as script_file:
-            script_file.write(response.text)
+        return {"message": "Success!", "output": result.stdout.strip()}
 
-        os.chmod(script_name, 0o755)
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=f"Script execution failed: {e.stderr.strip()}")
 
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, script_name, user_email,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
-        stdout, stderr = await process.communicate()
-
-        if process.returncode == 0:
-            return {"message": "Success!", "output": stdout.decode().strip()}
-        else:
-            raise HTTPException(status_code=500, detail=f"Script execution failed: {stderr.decode().strip()}")
-
-    except httpx.HTTPStatusError as http_err:
-        raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
