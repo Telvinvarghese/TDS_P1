@@ -104,7 +104,7 @@ def is_english_string(text: str) -> bool:
 async def translate_to_english(user_input: str) -> dict:
     if is_english_string(user_input):
         return {"status": "success", "output": user_input}
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -135,7 +135,7 @@ async def generate_python_script(task_description: str) -> str:
     """
     Uses GPT-4 to generate a Python script based on the task description.
     """
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -177,7 +177,7 @@ def execute_script(script_path: str) -> str:
             ["python3", script_path],
             capture_output=True,
             text=True,
-            timeout=20  # Prevent infinite loops
+            timeout=15  # Prevent infinite loops
         )
         return (result.stdout + result.stderr).strip()
     except subprocess.TimeoutExpired:
@@ -197,7 +197,7 @@ async def run_task(task: str = Query(..., description="Task description in plain
         translated_task = await translate_to_english(task)
         task_description = translated_task["output"]
         
-        max_retries = 3  # Maximum retries if script execution fails
+        max_retries = 2  # Maximum retries if script execution fails
         for attempt in range(max_retries):
             script_code = await generate_python_script(task_description)
             script_path = save_script(script_code)
