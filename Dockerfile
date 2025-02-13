@@ -8,10 +8,13 @@ ENV PATH="/root/.local/bin/:$PATH"
 # Set the working directory
 WORKDIR /
 
-# Install system dependencies
+# Install system dependencies (including Node.js and npm)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates \
+    git curl ca-certificates nodejs npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify installation
+RUN node -v && npm -v && npx -v
 
 # Install uv
 RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -19,14 +22,14 @@ RUN curl -fsSL https://astral.sh/uv/install.sh | sh
 # Verify uv installation
 RUN uv --version && ls -lah /root/.local/bin/
 
-# Copy dependencies first
+# Copy dependencies file first (Docker caching optimization)
 COPY requirements.txt .
 
-# Verify requirements.txt exists
-RUN ls -lah /requirements.txt
+# Ensure requirements.txt exists
+RUN test -f requirements.txt
 
-# Install dependencies using uv in system-wide mode
-RUN uv pip install --system -r requirements.txt --verbose
+# Install Python dependencies using uv
+RUN uv pip install --system -r requirements.txt --no-cache-dir --verbose
 
 # Copy the rest of the application
 COPY . .
