@@ -17,7 +17,7 @@ import os
 import re
 import subprocess
 from dateutil.parser import parse
-from datagen1 import (
+from datagen import (
     get_markdown,
     get_dates,
     get_contacts,
