@@ -1,15 +1,14 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 import subprocess
 import os
 import json
 import sys
-import urllib.request
-from urllib.parse import urlparse
 import httpx
 import uuid
 import re
+import asyncio
 
 app = FastAPI()
 
@@ -22,24 +21,17 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# run app
-
-
 @app.get("/")
 async def root():
-    try:
-        print("Successfully rendering app")
-        return JSONResponse(content={"message": "Successfully rendering app"})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return JSONResponse(content={"message": "Successfully rendering app"})
 
+# ✅ API Key Validation
 API_KEY = os.getenv("AIPROXY_TOKEN")
-BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1"
-
 if not API_KEY:
     raise ValueError("API key missing")
 
-headers = {
+BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1"
+HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {API_KEY}",
 }
@@ -49,39 +41,29 @@ FORBIDDEN_PATTERNS = [
     r"\.\./", r"/etc/", r"/var/", r"/home/", r"/root/"  # 🚨 Block access outside `/data/`
 ]
 
-
-def get_absolute_path(relative_path: str) -> str:
-    return os.path.join(os.getcwd(), relative_path)
-import json
-
-def write_cost_response(response):
-    """
-    Writes the JSON content of an API response to a file.
-    """
-    try:
-        response_json = response.json()  # ✅ Extract JSON data
-        with open("cost_response.json", "w") as cost_file:
-            json.dump(response_json, cost_file, indent=4)  # ✅ Now it's serializable
-    except Exception as e:
-        print(f"❌ Failed to write response: {e}")
-
-
+# ✅ Ensuring security of generated scripts
 def is_script_safe(script_code: str) -> bool:
-    """Ensure the generated script does NOT contain forbidden operations."""
     for pattern in FORBIDDEN_PATTERNS:
         if re.search(pattern, script_code):
             return False
     return True
 
+# ✅ Writing cost response (No need for async)
+def write_cost_response(response):
+    try:
+        response_json = response.json()
+        with open("cost_response.json", "w") as cost_file:
+            json.dump(response_json, cost_file, indent=4)
+    except Exception as e:
+        print(f"❌ Failed to write response: {e}")
 
+# ✅ Parse task with LLM (Corrected `async` handling)
 async def parse_task_with_llm(task_description: str) -> str:
-    """Generate a Python script for a given task, enforcing security constraints."""
-    timeout = httpx.Timeout(20.0)  # Set the timeout to 20 seconds or as needed
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
-                headers=headers,
+                headers=HEADERS,
                 json={
                     "model": "gpt-4o-mini",
                     "messages": [
@@ -93,127 +75,109 @@ async def parse_task_with_llm(task_description: str) -> str:
             )
             response.raise_for_status()
 
-            # Log the raw response for debugging purposes
             response_json = response.json()
-            print(response_json)  # Add this line for debugging
-
-            # Log cost usage (ensure this function exists)
             write_cost_response(response)
 
-            # Ensure the response contains the expected structure
-            if 'choices' not in response_json or len(response_json['choices']) == 0:
+            if 'choices' not in response_json or not response_json['choices']:
                 raise ValueError("Invalid response: 'choices' key is missing or empty")
 
             script_code = response_json['choices'][0].get('message', {}).get('content', "").strip()
-            if not script_code:
-                raise ValueError("Empty script content in response")
-
-            # Security check
-            if not is_script_safe(script_code):
+            if not script_code or not is_script_safe(script_code):
                 raise HTTPException(status_code=400, detail="Generated script contains unsafe operations.")
 
             return script_code
 
         except httpx.HTTPStatusError as http_err:
             raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
-        except httpx.TimeoutException as timeout_err:
-            raise HTTPException(status_code=408, detail=f"Request timed out: {timeout_err}")
-        except httpx.TooManyRequests as rate_limit_err:
-            raise HTTPException(status_code=429, detail=f"Rate limit exceeded: {rate_limit_err}")
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=408, detail="Request timed out")
         except Exception as e:
-            print(f"Error parsing response: {str(e)}")  # Log the error
-            raise HTTPException(status_code=500, detail="Error parsing LLM response")
+            raise HTTPException(status_code=500, detail=f"Error parsing LLM response: {str(e)}")
 
+# ✅ Save script securely
 def save_script(script_code: str) -> str:
-    """Save the generated script securely to /data/."""
     filename = f"/data/task_{uuid.uuid4().hex}.py"
     with open(filename, "w") as script_file:
         script_file.write(script_code)
     return filename
 
-
-def run_script(filename: str):
-    """Execute the generated script safely and capture output."""
+# ✅ Run script asynchronously using `asyncio.create_subprocess_exec()`
+async def run_script(filename: str):
     try:
-        result = subprocess.run(
-            [sys.executable, filename],
-            capture_output=True,
-            text=True,
-            check=True
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, filename,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        return {"status": "success", "output": result.stdout.strip()}
-    except subprocess.CalledProcessError as e:
-        return {"status": "error", "output": e.stderr.strip()}
+
+        stdout, stderr = await process.communicate()
+        if process.returncode == 0:
+            return {"status": "success", "output": stdout.decode().strip()}
+        else:
+            return {"status": "error", "output": stderr.decode().strip()}
+
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
-
-def download_and_run_script(script_url: str, user_email: str):
-    """Download a script from a URL, save it in /tmp, and execute it."""
+# ✅ Download and run script (Fixed `async` handling)
+async def download_and_run_script(script_url: str, user_email: str):
+    script_name = f"/tmp/{uuid.uuid4().hex}.py"
     
-    script_name = os.path.basename(urlparse(script_url).path)
-    script_path = os.path.abspath(os.path.join("/tmp", script_name))
-
     try:
-        # ✅ Ensure `uvicorn` is installed
-        try:
-            import uvicorn
-        except ImportError:
-            subprocess.run([sys.executable, "-m", "pip", "install", "uvicorn"], check=True)
-
-        # ✅ Download the script safely
-        if not os.path.exists(script_path):
-            urllib.request.urlretrieve(script_url, script_path)
-
-        # ✅ Ensure script has execute permissions
-        os.chmod(script_path, 0o755)
-
-        # ✅ Run script with email argument
-        result = subprocess.run([sys.executable, script_path, user_email], capture_output=True, text=True, check=True)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(script_url)
+            response.raise_for_status()
         
-        return {"message": "Success!", "output": result.stdout.strip()}
+        with open(script_name, "w") as script_file:
+            script_file.write(response.text)
 
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Script execution failed: {e.stderr.strip()}")
+        os.chmod(script_name, 0o755)
 
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, script_name, user_email,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            return {"message": "Success!", "output": stdout.decode().strip()}
+        else:
+            raise HTTPException(status_code=500, detail=f"Script execution failed: {stderr.decode().strip()}")
+
+    except httpx.HTTPStatusError as http_err:
+        raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+# ✅ `/run` endpoint (Fixed missing `await`)
 @app.post("/run")
 async def run_task(task: str = Query(..., description="Task description in plain English")):
-    """Detects and runs a task. Calls `download_and_run_script()` if a URL and email are present, otherwise generates a script."""
-    
-    # ✅ Extract URL from task
     url_match = re.search(r"https?://[^\s]+\.py", task)
-    
-    # ✅ Extract email from task
     email_match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", task)
 
     if url_match and email_match:
-        script_url = url_match.group(0)
-        user_email = email_match.group(0)
-        return download_and_run_script(script_url, user_email)  # ✅ Run script directly
+        return await download_and_run_script(url_match.group(0), email_match.group(0))
 
-    # 🚀 Default case: Generate a script for all other tasks
     try:
         script_code = await parse_task_with_llm(task)
         script_filename = save_script(script_code)
-        result = run_script(script_filename)
+        result = await run_script(script_filename)
 
         if result["status"] == "success":
-            return result  # ✅ HTTP 200 OK
+            return result
 
-        raise HTTPException(status_code=400, detail=result["output"])  # ❌ HTTP 400 (Task error)
+        raise HTTPException(status_code=400, detail=result["output"])
     
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")  # ❌ HTTP 500 (Agent error)
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
-
+# ✅ `/read` endpoint (Unchanged)
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    """Return the contents of a file for verification, ensuring only /data/ is accessible."""
     if not path.startswith("/data/"):
         raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
 
@@ -223,10 +187,9 @@ async def read_file(path: str = Query(..., description="Path to the file to read
     try:
         with open(path, "r") as file:
             content = file.read()
-        return {"status": "success", "content": content}  # ✅ HTTP 200 OK
+        return {"status": "success", "content": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
-
 
 # if __name__ == "__main__":
 #     import uvicorn
