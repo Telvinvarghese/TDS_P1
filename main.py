@@ -88,8 +88,6 @@ def is_inside_container():
         return False  # Not inside a container
 
 async def download_and_run_script(script_url: str, user_email: str):
-    """Download a script from a URL, save it in dir, and execute it."""
-
     # Check if inside a container
     if is_inside_container():
         # Inside a container
@@ -101,45 +99,26 @@ async def download_and_run_script(script_url: str, user_email: str):
         script_path = os.path.abspath(os.path.join(script_name))
     
     try:
-        # ✅ Ensure `uvicorn` is installed
         try:
             import uvicorn
         except ImportError:
             subprocess.run([sys.executable, "-m", "pip", "install", "uvicorn"], check=True)
-
-        # ✅ Download the script safely
         if not os.path.exists(script_path):
             urllib.request.urlretrieve(script_url, script_path)
-
-        # ✅ Ensure script has execute permissions
         os.chmod(script_path, 0o755)
-
-        # ✅ Run script with email argument
         result = subprocess.run([sys.executable, script_path, user_email,"--root=./data"], capture_output=True, text=True, check=True)
-        
         return {"message": "Success!", "output": result.stdout.strip()}
-
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"Script execution failed: {e.stderr.strip()}")
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 def is_english_string(text: str) -> bool:
-    """
-    Checks if the given text contains only ASCII characters (English letters, numbers, symbols).
-    """
     return bool(re.match(r"^[\x00-\x7F]+$", text))
 
 async def translate_to_english(user_input: str) -> dict:
-    """
-    Translates user input to English if it's not already in English.
-    If the input is already English, it returns the original text.
-    Raises FastAPI HTTPException on API errors.
-    """
     if is_english_string(user_input):
         return {"status": "success", "output": user_input}
-
     async with httpx.AsyncClient(timeout=20.0) as client:
         try:
             response = await client.post(
@@ -157,12 +136,9 @@ async def translate_to_english(user_input: str) -> dict:
             write_cost_response(response)
             if response.status_code != 200:
                 raise HTTPException(status_code=response.status_code, detail=response.text)
-
             response_data = response.json()
             translated_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
             return {"status": "success", "output": translated_text}
-
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:
@@ -181,23 +157,16 @@ async def generate_python_script(task_description: str) -> str:
                 headers=HEADERS,
                 json={
                     "model": "gpt-4o-mini",
-                    "messages": [
-{"role": "system", "content": system_prompts}
-                    ,
-                    {"role": "user", "content": task_description}
-                    ],
+                    "messages": [{"role": "system", "content": system_prompts},{"role": "user", "content": task_description}],
                     "temperature": 0.5,
                 }
             )
             write_cost_response(response)
             if response.status_code != 200:
                 raise HTTPException(status_code=response.status_code, detail=response.text)
-
             response_data = response.json()
             script_code = response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
             return script_code
-
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:
@@ -205,19 +174,19 @@ async def generate_python_script(task_description: str) -> str:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-SCRIPT_DIR = "./scripts"
-os.makedirs(SCRIPT_DIR, exist_ok=True)  # Ensure /data directory exists
 def save_script(script_code: str) -> str:
-    """
-    Saves the script inside /data and returns the file path.
-    """
-    script_filename = os.path.join(SCRIPT_DIR, f"script_{uuid.uuid4().hex}.py")
-    
+    SCRIPT_DIR = "./scripts"
+    os.makedirs(SCRIPT_DIR, exist_ok=True)
+        # Check if inside a container
+    if is_inside_container():
+        script_path = os.path.abspath(os.path.join("./app/scripts", f"script_{uuid.uuid4().hex}.py"))
+    else:
+        # Running locally
+        script_path = os.path.abspath(os.path.join("./scripts",f"script_{uuid.uuid4().hex}.py"))
     try:
         with open(script_filename, "w") as f:
             f.write(script_code)
         return script_filename
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save script: {str(e)}")
 
@@ -230,11 +199,9 @@ def execute_script(script_path: str) -> str:
             ["python3", script_path],
             capture_output=True,
             text=True,
-            timeout=10  # Prevent infinite loops
+            timeout=20  # Prevent infinite loops
         )
-
         return (result.stdout + result.stderr).strip()
-
     except subprocess.TimeoutExpired:
         return "Execution timed out!"
     except Exception as e:
@@ -246,14 +213,11 @@ def execute_script(script_path: str) -> str:
 async def run_task(task: str = Query(..., description="Task description in plain English")):
     url_match = re.search(r"https?://[^\s]+\.py", task)
     email_match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", task)
-
     if url_match and email_match:
         return await download_and_run_script(url_match.group(0), email_match.group(0))
-
     try:
         translated_task = await translate_to_english(task)
         task_description = translated_task["output"]
-
         script_code = await generate_python_script(task_description)
         script_path = save_script(script_code)
         execution_output = execute_script(script_path)
@@ -261,9 +225,7 @@ async def run_task(task: str = Query(..., description="Task description in plain
             result={
             "status": "Success",
             "script_path": script_path,
-            "script_code": script_code,
-            "output": execution_output
-            }
+            "output": execution_output}
             return result
         raise HTTPException(status_code=400, detail=result)
     
@@ -271,42 +233,20 @@ async def run_task(task: str = Query(..., description="Task description in plain
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
-    
-# ✅ `/read` endpoint 
-root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))  # Secure root directory
-
+        
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    try:
-        # Ensure the path starts with "/data/"
-        if not path.startswith("/data/"):
-            raise HTTPException(status_code=400, detail="Invalid file path.")
-
-        # Sanitize path: Remove leading "/" and construct absolute path
-        safe_path = os.path.abspath(os.path.join(root_path, path.lstrip("/")))
-
-        # Ensure the file is within the allowed directory
-        if not safe_path.startswith(root_path):
-            raise HTTPException(status_code=400, detail="Access denied.")
-
-        # Wait up to 10 seconds, checking every 2 seconds if the file exists
-        for _ in range(5):  # 5 checks (2s interval, total max 10s)
-            if os.path.isfile(safe_path):
-                break  # File found, proceed to reading
-            await asyncio.sleep(2)  # Wait for 2 seconds before checking again
-        else:
-            raise HTTPException(status_code=404, detail="File not found after waiting.")
-
-        # Read file synchronously
-        with open(safe_path, mode="r", encoding="utf-8") as file:
-            content = file.read()
-
-        return Response(content, media_type="text/plain", status_code=200)
-
-    except FileNotFoundError:
+    if not path.startswith("/data/"):
+        raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
+    path = os.path.join(".", path)
+    if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found.")
+    try:
+        with open(path, "r") as file:
+            content = file.read()
+        return content
     except Exception as e:
-        return JSONResponse({"error": "Internal server error."}, status_code=500)
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
