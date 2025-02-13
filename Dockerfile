@@ -25,7 +25,6 @@ COPY requirements.txt .
 
 # Upgrade pip and install dependencies efficiently
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir uvicorn \
     && pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the application code
@@ -34,5 +33,6 @@ COPY . .
 # Expose the port FastAPI runs on
 EXPOSE 8000
 
-# Start the FastAPI app using uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Start the FastAPI app using uv
+CMD ["uv", "serve", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
