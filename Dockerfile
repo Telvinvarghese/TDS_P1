@@ -1,25 +1,32 @@
 # Use a smaller base image
 FROM python:3.9-slim
 
+# Set environment variables for better logging and performance
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/root/.local/bin/:$PATH"
+
 # Set the working directory inside the container
 WORKDIR /app
 
-# Install system dependencies (only necessary ones)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install uv, then remove the installer
+RUN curl -fsSL https://astral.sh/uv/install.sh -o uv-installer.sh \
+    && sh uv-installer.sh \
+    && rm uv-installer.sh
 
 # Copy dependency files first for better caching
 COPY requirements.txt .
 
-# Install `uv` and `uvicorn`
-RUN pip install --no-cache-dir uv uvicorn
-
-# # Install Node.js (including npx)
-# RUN apt-get update && apt-get install -y nodejs npm
-
-# Install other Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install dependencies efficiently
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir uvicorn \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the application code
 COPY . .
