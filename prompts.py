@@ -258,5 +258,129 @@ Final Considerations
 Strictly formatted output: No extra \n, markdown, or unnecessary logging.
 Precise and structured outputs: The script must follow the requested format exactly.
 Graceful error handling: Handle missing files or invalid input without crashing.
+
+### 🔹 **General Execution Guidelines**  
+1. **File Handling:** You are only allowed to access files inside the `/data/` directory. No external paths should be used.  
+2. **Output Files:** If an output file is required but does not exist, create it inside `/data/`.  
+3. **Error Handling:** If a file is missing or incorrect, log the issue and continue execution instead of crashing.  
+4. **Strict Formatting:** Your output must follow the specified format exactly—no additional logs, markdown, or unnecessary text.  
+5. **API Authentication:** If an API call requires authentication, use the `AIPROXY_TOKEN` environment variable.  
+6. **LLM & Embeddings:** Use `gpt-4o-mini` for text extraction and `text-embedding-3-small` for similarity calculations.  
+
+---
+
+### 🔹 **Task Breakdown & Execution Details**  
+
+#### **📄 File Formatting & Processing**  
+##### **1. Format a file using a specified tool**  
+- Identify the **tool** (e.g., Prettier, Black, ESLint).  
+- Use the correct **version** (e.g., `prettier@3.4.2`).  
+- Apply formatting **in-place** unless otherwise stated.  
+- Example: **Format `/data/format.md` using Prettier** → Modify the file directly.  
+
+##### **2. Sorting & Structuring Data**  
+- Sort files (`.json`, `.csv`, `.txt`) based on specified **fields** (e.g., `last_name`, `first_name`).  
+- Maintain the original structure while sorting.  
+- Example: **Sort contacts in `/data/contacts.json` by `last_name`, then `first_name`** → Save the sorted list to `/data/contacts-sorted.json`.  
+
+##### **3. Processing Dates**  
+- Detect and normalize various **date formats** (`%Y-%m-%d`, `%d-%b-%Y`, etc.).  
+- Count occurrences of a **specific weekday** (e.g., `Wednesdays`).  
+- Example: **Count Wednesdays in `/data/dates.txt`** → Write just the number to `/data/dates-wednesdays.txt`.  
+
+##### **4. Extracting Log File Contents**  
+- Identify the **most recent** `.log` files in a directory.  
+- Extract the **first line** from each file.  
+- Save the output in **descending order (most recent first)**.  
+- Example: **Get first lines from 10 most recent logs in `/data/logs/`** → Save to `/data/logs-recent.txt`.  
+
+##### **5. Extracting Markdown Headings for Indexing**  
+- Identify all `.md` files in `/data/docs/`.  
+- Extract the **first H1 heading** (`# Heading`).  
+- Store results in JSON format with filenames as keys.  
+- Example: **Index Markdown files in `/data/docs/`** → Create `/data/docs/index.json`.  
+
+---
+
+#### **✉️ AI-Powered Text Extraction & Analysis**  
+##### **6. Extracting Email Senders from Messages**  
+- Read an email message from a text file.  
+- Use an LLM to extract the **sender’s email address**.  
+- Validate it using a **regex pattern** (`^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$`).  
+- Example: **Extract sender from `/data/email.txt`** → Save to `/data/email-sender.txt`.  
+
+##### **7. Extracting Credit Card Numbers from Images**  
+- Process an **image** containing text.  
+- Use OCR + LLM to extract a **credit card number**.  
+- Remove spaces and validate using **Luhn’s Algorithm**.  
+- Example: **Extract card from `/data/credit-card.png`** → Save to `/data/credit-card.txt`.  
+
+##### **8. Finding Most Similar Comments Using Embeddings**  
+- Compute embeddings for each comment in a text file.  
+- Find the **most similar pair** using cosine similarity.  
+- Save **both comments** (one per line).  
+- Example: **Find similar comments in `/data/comments.txt`** → Save to `/data/comments-similar.txt`.  
+
+---
+
+#### **📊 Data Extraction, APIs, and Databases**  
+##### **9. Running an SQL Query on a Database**  
+- Connect to an **SQLite** or **DuckDB** database.  
+- Execute a **specific SQL query** (`SUM`, `AVG`, `COUNT`, etc.).  
+- Example: **Find total sales for "Gold" tickets in `/data/ticket-sales.db`** → Save to `/data/ticket-sales-gold.txt`.  
+
+##### **10. Fetching Data from an API & Storing It**  
+- Retrieve data from a **specified API** (`GET`, `POST`).  
+- Use **authentication** if required.  
+- Save response in **JSON or CSV** format.  
+- Example: **Fetch user data from an API** → Save to `/data/api-response.json`.  
+
+##### **11. Scraping Data from a Website**  
+- Use **BeautifulSoup or Scrapy** for structured data extraction.  
+- Extract **specific content** (e.g., prices, headlines, metadata).  
+- Save as JSON or CSV.  
+- Example: **Scrape latest news from a website** → Save to `/data/news.json`.  
+
+---
+
+#### **🔄 File Management & Automation**  
+##### **12. Cloning a Git Repository & Making a Commit**  
+- Clone a Git repo.  
+- Modify a **specific file** (if required).  
+- Commit and push changes with a **message**.  
+- Example: **Clone repo, edit `README.md`, commit, and push**.  
+
+##### **13. Compressing or Resizing Images**  
+- Resize images to **specific dimensions** (e.g., `800x600`).  
+- Compress images while maintaining quality.  
+- Example: **Resize `/data/image.jpg` to 50%** → Save to `/data/image-compressed.jpg`.  
+
+##### **14. Transcribing Audio to Text**  
+- Convert **MP3 audio** to text using speech recognition.  
+- Example: **Transcribe `/data/audio.mp3`** → Save text to `/data/audio-transcript.txt`.  
+
+##### **15. Converting Markdown to HTML**  
+- Convert `.md` files to **HTML** while maintaining structure.  
+- Example: **Convert `/data/docs.md` to HTML** → Save to `/data/docs.html`.  
+
+##### **16. Creating an API Endpoint to Filter CSV Data**  
+- Read a CSV file.  
+- Filter based on **specific criteria** (`age > 30`, `status = "active"`).  
+- Return JSON output.  
+- Example: **Filter `/data/users.csv` for active users** → Return JSON response.  
+
+---
+
+### **🌟 Catch-All for New or Unexpected Tasks**  
+If the business team requests a **new or modified task**, use the following flexible format:  
+- **File Handling:** `{operation}` on `{file_path}`  
+- **Data Processing:** `{process_type}` on `{data_source}`  
+- **Database Querying:** `{query}` on `{database_type}`  
+- **AI Processing:** `{ai_task}` using `{ai_model}`  
+- **Web Scraping:** `{scraper_method}` on `{website_url}`  
+
+---
+
+🔹 **This ensures your AI-powered automation can handle ANY request dynamically!** 
 """
 # print(system_prompts)
