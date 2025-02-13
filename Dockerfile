@@ -15,6 +15,9 @@ COPY requirements.txt .
 # Install `uv` and `uvicorn`
 RUN pip install --no-cache-dir uv uvicorn
 
+# Install Node.js (including npx)
+RUN apt-get update && apt-get install -y nodejs npm
+
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
