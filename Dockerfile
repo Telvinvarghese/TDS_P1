@@ -18,11 +18,20 @@ RUN curl -fsSL https://astral.sh/uv/install.sh -o uv-installer.sh \
     && sh uv-installer.sh \
     && rm uv-installer.sh
 
+# Verify uv installation
+RUN uv --version && ls -lah /root/.local/bin/
+
 # Copy only dependencies file first to leverage Docker cache
 COPY requirements.txt .
 
+# Verify requirements.txt exists
+RUN ls -lah /app/requirements.txt
+
+# Force update uv
+RUN uv self update
+
 # Use uv to install dependencies
-RUN uv pip install -r requirements.txt
+RUN /bin/sh -c "uv pip install -r requirements.txt"
 
 # Now copy the rest of the application code
 COPY . .
@@ -32,4 +41,5 @@ EXPOSE 8000
 
 # Start FastAPI using uv
 CMD ["uv", "pip", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
 
