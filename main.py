@@ -29,8 +29,7 @@ async def root():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
 # ✅ API Key Validation
-# API_KEY = os.getenv("AIPROXY_TOKEN")
-API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIyZjIwMDE2NDArMUBkcy5zdHVkeS5paXRtLmFjLmluIn0.Oeg6lAaRenn3gnBWd6qaGscvatJ6ftTpvw-waESMVs8"  
+API_KEY = os.getenv("AIPROXY_TOKEN")
 if not API_KEY:
     raise ValueError("API key missing")
 
@@ -79,12 +78,27 @@ async def run_script(filename: str):
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
-async def download_and_run_script(script_url: str, user_email: str):
-    """Download a script from a URL, save it in /tmp, and execute it."""
-    
-    script_name = os.path.basename(urlparse(script_url).path)
-    script_path = os.path.abspath(os.path.join(script_name))
+# Function to check if the script is running inside a container
+def is_inside_container():
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            return "docker" in f.read()  # or other container identifiers
+    except FileNotFoundError:
+        return False  # Not inside a container
 
+async def download_and_run_script(script_url: str, user_email: str):
+    """Download a script from a URL, save it in dir, and execute it."""
+
+    # Check if inside a container
+    if is_inside_container():
+        # Inside a container
+        script_name = os.path.basename(urlparse(script_url).path)
+        script_path = os.path.abspath(os.path.join("/tmp", script_name))
+    else:
+        # Running locally
+        script_name = os.path.basename(urlparse(script_url).path)
+        script_path = os.path.abspath(os.path.join(script_name))
+    
     try:
         # ✅ Ensure `uvicorn` is installed
         try:
