@@ -175,14 +175,14 @@ async def generate_python_script(task_description: str) -> str:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 def save_script(script_code: str) -> str:
-    SCRIPT_DIR = "./scripts"
-    os.makedirs(SCRIPT_DIR, exist_ok=True)
+    # SCRIPT_DIR = "./scripts"
+    # os.makedirs(SCRIPT_DIR, exist_ok=True)
         # Check if inside a container
     if is_inside_container():
-        script_path = os.path.abspath(os.path.join("./app/scripts", f"script_{uuid.uuid4().hex}.py"))
+        script_path = os.path.abspath(os.path.join("/app", f"script_{uuid.uuid4().hex}.py"))
     else:
         # Running locally
-        script_path = os.path.abspath(os.path.join("./scripts",f"script_{uuid.uuid4().hex}.py"))
+        script_path = os.path.abspath(os.path.join(f"script_{uuid.uuid4().hex}.py"))
     try:
         with open(script_path, "w") as f:
             f.write(script_code)
@@ -207,8 +207,6 @@ def execute_script(script_path: str) -> str:
     except Exception as e:
         return f"Execution error: {str(e)}"
     
-
-# ✅ `/run` endpoint
 @app.post("/run")
 async def run_task(task: str = Query(..., description="Task description in plain English")):
     url_match = re.search(r"https?://[^\s]+\.py", task)
