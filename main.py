@@ -93,7 +93,7 @@ async def download_and_run_script(script_url: str, user_email: str):
     if is_inside_container():
         # Inside a container
         script_name = os.path.basename(urlparse(script_url).path)
-        script_path = os.path.abspath(os.path.join("/tmp", script_name))
+        script_path = os.path.abspath(os.path.join("/app", script_name))
     else:
         # Running locally
         script_name = os.path.basename(urlparse(script_url).path)
