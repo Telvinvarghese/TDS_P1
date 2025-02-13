@@ -12,6 +12,7 @@ import uuid
 import re
 import asyncio
 from prompts import system_prompts
+from pathlib import Path
 
 app = FastAPI()
 
@@ -274,18 +275,24 @@ async def run_task(task: str = Query(..., description="Task description in plain
 # ✅ `/read` endpoint 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    if not path.startswith("/data/"):
-        raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
-    # Define the paths
-    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), './data'))
-    path = os.path.join(data_dir, path.lstrip('/data/'))
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="File not found.")
+    data_dir = Path(__file__).parent.resolve() / "data"
+    
+    # Resolve and validate path
+    try:
+        resolved_path = (data_dir / Path(path).relative_to("/data")).resolve()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file path.")
+    
+    # Ensure the file is inside data_dir
+    if not resolved_path.is_file() or not resolved_path.is_relative_to(data_dir):
+        raise HTTPException(status_code=400, detail="Access denied.")
 
     try:
-        with open(path, "r") as file:
+        with resolved_path.open("r", encoding="utf-8") as file:
             content = file.read()
         return {"status": "success", "content": content}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
