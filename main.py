@@ -79,22 +79,7 @@ async def run_script(filename: str):
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
-# Function to check if the script is running inside a container
-def is_inside_container():
-    try:
-        with open("/proc/1/cgroup", "r") as f:
-            return "docker" in f.read()  # or other container identifiers
-    except FileNotFoundError:
-        return False  # Not inside a container
-
 async def download_and_run_script(script_url: str, user_email: str):
-    # Check if inside a container
-    if is_inside_container():
-        # Inside a container
-        script_name = os.path.basename(urlparse(script_url).path)
-        script_path = os.path.abspath(os.path.join("/app", script_name))
-    else:
-        # Running locally
         script_name = os.path.basename(urlparse(script_url).path)
         script_path = os.path.abspath(os.path.join(script_name))
     
@@ -175,13 +160,6 @@ async def generate_python_script(task_description: str) -> str:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 def save_script(script_code: str) -> str:
-    # SCRIPT_DIR = "./scripts"
-    # os.makedirs(SCRIPT_DIR, exist_ok=True)
-        # Check if inside a container
-    if is_inside_container():
-        script_path = os.path.abspath(os.path.join("/app", f"script_{uuid.uuid4().hex}.py"))
-    else:
-        # Running locally
         script_path = os.path.abspath(os.path.join(f"script_{uuid.uuid4().hex}.py"))
     try:
         with open(script_path, "w") as f:
