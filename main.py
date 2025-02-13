@@ -121,8 +121,8 @@ async def run_script(filename: str):
 
 # ✅ Download and run script (Fixed `async` handling)
 async def download_and_run_script(script_url: str, user_email: str):
-    script_name = f"/tmp/{uuid.uuid4().hex}.py"
-    
+    script_name = os.path.basename(urlparse(script_url).path)
+    script_path = os.path.abspath(os.path.join("/tmp", script_name))
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(script_url)
