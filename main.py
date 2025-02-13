@@ -60,40 +60,51 @@ def write_cost_response(response):
 
 # ✅ Parse task with LLM (Corrected `async` handling)
 async def parse_task_with_llm(task_description: str) -> str:
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        try:
-            response = await client.post(
-                BASE_URL + "/chat/completions",
-                headers=HEADERS,
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": "Generate a Python script that strictly operates only in /data/."},
-                        {"role": "user", "content": task_description}
-                    ],
-                    "temperature": 0.2
-                }
-            )
-            response.raise_for_status()
+    max_retries = 3
+    for attempt in range(max_retries):
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            try:
+                response = await client.post(
+                    BASE_URL + "/chat/completions",
+                    headers=HEADERS,
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": "Generate a Python script that strictly operates only in /data/."},
+                            {"role": "user", "content": task_description}
+                        ],
+                        "temperature": 0.2
+                    }
+                )
+                response.raise_for_status()
+                
+                if response.status_code == 429:  # Too Many Requests
+                    wait_time = (2 ** attempt)  # Exponential backoff (2, 4, 8 sec)
+                    await asyncio.sleep(wait_time)
+                    continue  # Retry
 
-            response_json = response.json()
-            write_cost_response(response)
+                response_json = response.json()
+                if 'choices' not in response_json or not response_json['choices']:
+                    raise ValueError("Invalid response: 'choices' key is missing or empty")
 
-            if 'choices' not in response_json or not response_json['choices']:
-                raise ValueError("Invalid response: 'choices' key is missing or empty")
+                script_code = response_json['choices'][0].get('message', {}).get('content', "").strip()
+                if not script_code or not is_script_safe(script_code):
+                    raise HTTPException(status_code=400, detail="Generated script contains unsafe operations.")
 
-            script_code = response_json['choices'][0].get('message', {}).get('content', "").strip()
-            if not script_code or not is_script_safe(script_code):
-                raise HTTPException(status_code=400, detail="Generated script contains unsafe operations.")
+                return script_code
 
-            return script_code
+            except httpx.HTTPStatusError as http_err:
+                if http_err.response.status_code == 429 and attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    continue  # Retry
+                raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=408, detail="Request timed out")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error parsing LLM response: {str(e)}")
 
-        except httpx.HTTPStatusError as http_err:
-            raise HTTPException(status_code=http_err.response.status_code, detail=f"HTTP error: {http_err}")
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=408, detail="Request timed out")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error parsing LLM response: {str(e)}")
+    raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+
 
 # ✅ Save script securely
 def save_script(script_code: str) -> str:
