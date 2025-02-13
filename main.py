@@ -273,28 +273,40 @@ async def run_task(task: str = Query(..., description="Task description in plain
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
     
 # ✅ `/read` endpoint 
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))  # Secure root directory
+
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    data_dir = Path(__file__).parent.resolve() / "data"
-    
-    # Resolve and validate path
     try:
-        resolved_path = (data_dir / Path(path).relative_to("/data")).resolve()
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid file path.")
-    
-    # Ensure the file is inside data_dir
-    if not resolved_path.is_file() or not resolved_path.is_relative_to(data_dir):
-        raise HTTPException(status_code=400, detail="Access denied.")
+        # Ensure the path starts with "/data/"
+        if not path.startswith("/data/"):
+            raise HTTPException(status_code=400, detail="Invalid file path.")
 
-    try:
-        with resolved_path.open("r", encoding="utf-8") as file:
+        # Sanitize path: Remove leading "/" and construct absolute path
+        safe_path = os.path.abspath(os.path.join(root_path, path.lstrip("/")))
+
+        # Ensure the file is within the allowed directory
+        if not safe_path.startswith(root_path):
+            raise HTTPException(status_code=400, detail="Access denied.")
+
+        # Wait up to 10 seconds, checking every 2 seconds if the file exists
+        for _ in range(5):  # 5 checks (2s interval, total max 10s)
+            if os.path.isfile(safe_path):
+                break  # File found, proceed to reading
+            await asyncio.sleep(2)  # Wait for 2 seconds before checking again
+        else:
+            raise HTTPException(status_code=404, detail="File not found after waiting.")
+
+        # Read file synchronously
+        with open(safe_path, mode="r", encoding="utf-8") as file:
             content = file.read()
-        return {"status": "success", "content": content}
+
+        return Response(content, media_type="text/plain", status_code=200)
+
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+        return JSONResponse({"error": "Internal server error."}, status_code=500)
 
 if __name__ == "__main__":
     import uvicorn
