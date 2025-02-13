@@ -23,7 +23,7 @@ RUN uv --version && ls -lah /root/.local/bin/
 COPY requirements.txt .
 
 # Verify requirements.txt exists
-RUN ls -lah /app/requirements.txt
+RUN ls -lah /requirements.txt
 
 # Install dependencies using uv in system-wide mode
 RUN uv pip install --system -r requirements.txt --verbose
