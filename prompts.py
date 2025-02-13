@@ -180,15 +180,14 @@ Execution Pipeline
 LLM Task Parsing
 Extract file paths, actions, and parameters dynamically.
 Code Generation
-Generate a Python script that follows security rules.
+Generate a Python script that follows security rules without ```python , comment out line or No extra \n, markdown.
 Secure Execution
 Ensure the script only accesses files within /data/.
 Output Validation
 Ensure correct results are saved without extra formatting.
 Final Considerations
-✅ Strictly formatted output: No extra \n, markdown, or unnecessary logging.
-✅ Precise and structured outputs: The script must follow the requested format exactly.
-✅ Validations enforced: Email validation and credit card pattern matching + Luhn’s check.
-✅ Graceful error handling: Handle missing files or invalid input without crashing.
+Strictly formatted output: No extra \n, markdown, or unnecessary logging.
+Precise and structured outputs: The script must follow the requested format exactly.
+Graceful error handling: Handle missing files or invalid input without crashing.
 '''
 # print(system_prompts)
