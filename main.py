@@ -80,8 +80,8 @@ async def run_script(filename: str):
         return {"status": "error", "output": str(e)}
 
 async def download_and_run_script(script_url: str, user_email: str):
-        script_name = os.path.basename(urlparse(script_url).path)
-        script_path = os.path.abspath(os.path.join(script_name))
+    script_name = os.path.basename(urlparse(script_url).path)
+    script_path = os.path.abspath(os.path.join(script_name))
     
     try:
         try:
@@ -160,7 +160,7 @@ async def generate_python_script(task_description: str) -> str:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 def save_script(script_code: str) -> str:
-        script_path = os.path.abspath(os.path.join(f"script_{uuid.uuid4().hex}.py"))
+    script_path = os.path.abspath(os.path.join(f"script_{uuid.uuid4().hex}.py"))
     try:
         with open(script_path, "w") as f:
             f.write(script_code)
