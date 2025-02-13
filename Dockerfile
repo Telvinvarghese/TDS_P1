@@ -1,45 +1,38 @@
 # Use a smaller base image
 FROM python:3.9-slim
 
-# Set environment variables for better logging and performance
+# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/root/.local/bin/:$PATH"
 
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /app
 
-# Install system dependencies efficiently
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install uv, then remove the installer
-RUN curl -fsSL https://astral.sh/uv/install.sh -o uv-installer.sh \
-    && sh uv-installer.sh \
-    && rm uv-installer.sh
+# Install uv
+RUN curl -fsSL https://astral.sh/uv/install.sh | sh
 
 # Verify uv installation
 RUN uv --version && ls -lah /root/.local/bin/
 
-# Copy only dependencies file first to leverage Docker cache
+# Copy dependencies first
 COPY requirements.txt .
 
 # Verify requirements.txt exists
 RUN ls -lah /app/requirements.txt
 
-# Force update uv
-RUN uv self update
+# Install dependencies using uv
+RUN uv pip install -r requirements.txt --verbose
 
-# Use uv to install dependencies
-RUN /bin/sh -c "uv pip install -r requirements.txt"
-
-# Now copy the rest of the application code
+# Copy the rest of the application
 COPY . .
 
-# Expose the FastAPI port
+# Expose FastAPI port
 EXPOSE 8000
 
-# Start FastAPI using uv
+# Start FastAPI using uvicorn
 CMD ["uv", "pip", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-
