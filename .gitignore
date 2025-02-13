@@ -23,3 +23,5 @@ __pycache__/
 cost.txt
 test.py
 cost_response.json
+data/
+scripts/

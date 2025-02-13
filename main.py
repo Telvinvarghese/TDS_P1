@@ -11,7 +11,7 @@ import httpx
 import uuid
 import re
 import asyncio
-from prompts import system_prompts
+from prompts1 import system_prompts
 from pathlib import Path
 
 app = FastAPI()
@@ -184,9 +184,9 @@ def save_script(script_code: str) -> str:
         # Running locally
         script_path = os.path.abspath(os.path.join("./scripts",f"script_{uuid.uuid4().hex}.py"))
     try:
-        with open(script_filename, "w") as f:
+        with open(script_path, "w") as f:
             f.write(script_code)
-        return script_filename
+        return script_path
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save script: {str(e)}")
 
@@ -236,15 +236,20 @@ async def run_task(task: str = Query(..., description="Task description in plain
         
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
+    if not path:
+        raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
         raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
-    path = os.path.join(".", path)
+    path = os.path.abspath(os.path.join("./data", path.lstrip("/data/")))
+    print(path)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found.")
     try:
         with open(path, "r") as file:
             content = file.read()
         return content
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
