@@ -79,7 +79,7 @@ Use these guidelines for handling different types of tasks:
 ### **LLM Usage Guidelines:**  
 For tasks involving text processing, extraction, or advanced computation, the script must use:  
 
-- **Chat Model:** `"GPT-4o-Mini"`  
+- **Chat Model:** `"gpt-4o-mini"`  
   - **Endpoint:** `http://aiproxy.sanand.workers.dev/openai/v1/chat/completions`  
   - **Extracted Content:** `response.json()["choices"][0]["message"]["content"]`  
 
