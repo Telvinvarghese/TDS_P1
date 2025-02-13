@@ -22,7 +22,7 @@ Use these guidelines for handling different types of tasks:
   - Ensure proper encoding (`utf-8`).  
   - Strip extra spaces and normalize text where necessary.  
   - Handle multi-language support gracefully.  
-  - Use `GPT-4o-Mini` if advanced text analysis is required. 
+  - Use `gpt-4o-mini` if advanced text analysis is required. 
 ```
     payload = {
         "model": "gpt-4o-mini",
