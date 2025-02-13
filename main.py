@@ -39,8 +39,10 @@ HEADERS = {
 }
 
 FORBIDDEN_PATTERNS = [
-    r"rm\s", r"shutil\.rmtree", r"os\.remove", r"os\.rmdir",  # 🚨 Block file deletion
-    r"\.\./", r"/etc/", r"/var/", r"/home/", r"/root/"  # 🚨 Block access outside `/data/`
+    r"(rm\s|shutil\.rmtree|os\.remove|os\.rmdir|subprocess\.)",  # File deletion + shell execution
+    r"(eval|exec)\(",  # Prevent arbitrary code execution
+    r"(\.\./|/etc/|/var/|/home/|/root/)",  # Directory traversal
+    r"open\s*\(\s*['\"]?(/etc/passwd|/etc/shadow|/var/log)['\"]?\s*\)",  # Sensitive file access
 ]
 
 # ✅ Ensuring security of generated scripts
@@ -108,29 +110,31 @@ async def parse_task_with_llm(task_description: str) -> str:
 
 
 # ✅ Save script securely
+import tempfile
 def save_script(script_code: str) -> str:
-    filename = f"/data/task_{uuid.uuid4().hex}.py"
+    temp_dir = tempfile.mkdtemp()
+    filename = os.path.join(temp_dir, f"task_{uuid.uuid4().hex}.py")
     with open(filename, "w") as script_file:
         script_file.write(script_code)
     return filename
 
-def run_script(filename: str):
-    """Execute the generated script safely and capture output."""
+async def run_script(filename: str):
     try:
-        result = subprocess.run(
-            [sys.executable, filename],
-            capture_output=True,
-            text=True,
-            check=True
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, filename,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        return {"status": "success", "output": result.stdout.strip()}
-    except subprocess.CalledProcessError as e:
-        return {"status": "error", "output": e.stderr.strip()}
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            return {"status": "success", "output": stdout.decode().strip()}
+        else:
+            return {"status": "error", "output": stderr.decode().strip()}
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
-
-def download_and_run_script(script_url: str, user_email: str):
+async def download_and_run_script(script_url: str, user_email: str):
     """Download a script from a URL, save it in /tmp, and execute it."""
     
     script_name = os.path.basename(urlparse(script_url).path)
