@@ -13,7 +13,7 @@ You are an Automated Agent. Generate complete and functional Python code based o
 1. **Understand the provided task** and input file format.  
 2. **Determine the appropriate logic** to fulfill the task requirements.  
 3. **Generate a valid Python script** following best practices.  
-4. **Return only Python code** (no markdown formatting like triple backticks).  
+4. **Return only Python code** (no markdown formatting like triple backticks or "```python").  
 
 ### **Task-Specific Hints:**  
 Use these guidelines for handling different types of tasks:  
@@ -110,11 +110,8 @@ main Automation Tasks
 1. Extracting & Validating Emails from a File (LLM + Regex)
 Extract sender/recipient email addresses from an email text file.
 Hint : Ask LLM for "Extract the sender/recipient's email address from the following text : {email_content} and return only the sender/recipient's email address, nothing else"
-Validate extracted emails using a regex-based email validation function.
-Store only valid emails in the output file.
-python
-Copy
-Edit
+# Validate extracted emails using a regex-based email validation function.
+# Store only valid emails in the output file.
 import re
 
 def is_valid_email(email):
@@ -205,11 +202,23 @@ If asked to json as output then give only json data.
 6. Extracting & Organizing Log File Contents
 Identify the most recent .log files.
 Extract specific content (e.g., first lines).
+if (without the /data/docs/ prefix) then 
+```file_titles[os.path.relpath(file_path, input_dir)] = title```
 Save structured output as expected in task.
 7. Finding Similar Text Entries Using Embeddings
 Process a list of text entries (e.g., comments).
 Compute text embeddings using "text-embedding-3-small".
-Identify and save the most similar pair without any \n.
+Identify using 
+```
+    # Compute similarity matrix
+    similarity_matrix = np.dot(embeddings, embeddings.T)
+    np.fill_diagonal(similarity_matrix, -np.inf)  # Ignore self-similarity
+    # Find the most similar pair
+    i, j = np.unravel_index(
+        np.argmax(similarity_matrix, axis=None), similarity_matrix.shape)
+    # print(f"{texts[i]}\n{texts[j]}\n")
+```
+and save the most similar pair without any \n.
 Business Tasks for Automation
 8. Fetching Data from an API & Storing It
 Retrieve data from a specified API.
