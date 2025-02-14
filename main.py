@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
 import urllib.request
 from urllib.parse import urlparse
 import subprocess
 import os
 import json
+import csv
 import sys
 import httpx
 import uuid
@@ -368,6 +369,12 @@ async def run_task(task: str = Query(..., description="Task description")):
 
     # Continue with normal task execution
     try:
+        # Normalize spaces (remove extra spaces and replace multiple spaces with a single space)
+        task_description = re.sub(r'\s+', ' ', task_description.strip())
+        task_description = task_description.replace(" llm ", " gpt-4o-mini ")\
+                                            .replace(" LLM ", " gpt-4o-mini ")\
+                                            .replace("`", "")\
+                                            .replace('"', "")
         instructions_for_task = await call_gpt(task_description)
         response, script_path = await generate_python_script(instructions_for_task)
         execution_output = execute_script(script_path)
@@ -410,19 +417,36 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    base_dir = os.path.abspath("./data")  
-    full_path = os.path.abspath(os.path.join(base_dir, path.lstrip("/data/")))  # Fixed path handling
-
-    # Prevent access outside `base_dir`
-    if not full_path.startswith(base_dir):
+    root = os.getcwd()
+    full_path = os.path.abspath(os.path.join(root, path))
+    if not full_path.startswith('/data/'):
         raise HTTPException(status_code=400, detail="Invalid file path.")
 
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found.")
 
     try:
-        with open(full_path, "r") as file:
-            return {"content": file.read()}
+        file_extension = full_path.suffix.lower()
+        if file_extension in [".txt", ".log"]:
+            with open(full_path, "r", encoding="utf-8") as file:
+                return PlainTextResponse(content=file.read())
+
+        elif file_extension == ".json":
+            with open(full_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            return JSONResponse(content=json.dumps(data, separators=(",", ":")), media_type="application/json")
+
+        elif file_extension == ".csv":
+            with open(full_path, "r", encoding="utf-8") as file:
+                reader = csv.reader(file)
+                data = [row for row in reader]
+            return JSONResponse(content=json.dumps({"data": data}, separators=(",", ":")), media_type="application/json")
+
+        elif file_extension in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+            return FileResponse(full_path, media_type=f"image/{file_extension.lstrip('.')}")
+
+        else:
+            return FileResponse(full_path)  # Default case for other file types
     except UnicodeDecodeError:
         raise HTTPException(status_code=500, detail="File encoding error.")
     except Exception as e:
@@ -437,7 +461,7 @@ async def call_gpt(task_description: str) -> str:
     payload = {
     "model": "gpt-4o-mini",  # Ensure this model is valid
     "messages": [
-        {"role": "system","content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' If embeddings are mentioned, add the sentence 'text-embedding-3-small is used.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
+        {"role": "system","content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
         {"role": "user","content": task_description}]
             ,"temperature": 0}
     try:
