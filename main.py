@@ -31,7 +31,8 @@ app.add_middleware(
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = os.getenv("AIPROXY_TOKEN")
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIyZjIwMDAxNTBAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Po4ffWC8vCUNjE62Epu-JdCgfedBKQHaypJiy6tjyHI"
+# os.getenv("AIPROXY_TOKEN")
 if not API_KEY:
     raise ValueError("API key missing")
 
@@ -414,6 +415,7 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
+    os.makedirs("data", exist_ok=True)
     if not path:
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
@@ -438,6 +440,7 @@ def write_to_file(filename, content):
         file.write(content)
 
 async def call_gpt(task_description: str) -> str:
+    os.makedirs("task_description", exist_ok=True)
     payload = {
     "model": "gpt-4o-mini",  # Ensure this model is valid
     "messages": [
@@ -458,6 +461,4 @@ async def call_gpt(task_description: str) -> str:
 
 if __name__ == "__main__":
     import uvicorn
-    os.makedirs("data", exist_ok=True)
-    os.makedirs("task_description", exist_ok=True)
     uvicorn.run(app, host="0.0.0.0", port=8000)
