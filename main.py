@@ -130,7 +130,7 @@ async def translate_to_english(user_input: str) -> dict:
     print(f"Translating text to English: {user_input}")
     if is_english_string(user_input):
         return {"status": "success", "output": user_input}
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -207,7 +207,7 @@ async def generate_python_script(task_description: str) -> str:
         {"role": "system", "content": system_prompts},  # Keep system prompt
         {"role": "user", "content": task_description}   # Fresh user input
     ]
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -263,7 +263,7 @@ Based on Error encountered while running task
         {"role": "system", "content": system_prompts},  # Keep system prompt
         {"role": "user", "content": update_task}   # Fresh user input
     ]
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -326,7 +326,7 @@ def execute_script(script_path: str) -> dict:
             ["python3", script_path],
             capture_output=True,
             text=True,
-            timeout=10  # Prevent infinite loops
+            timeout=15  # Prevent infinite loops
         )
 
         return {
@@ -463,7 +463,7 @@ async def call_gpt(task_description: str) -> str:
         {"role": "user","content": task_description}]
             ,"temperature": 0}
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(f"{BASE_URL}/chat/completions", headers=HEADERS, json=payload)
             response.raise_for_status()
             content = response.json().get("choices", [{}])[
