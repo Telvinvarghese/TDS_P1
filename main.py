@@ -371,10 +371,7 @@ async def run_task(task: str = Query(..., description="Task description")):
     try:
         # Normalize spaces (remove extra spaces and replace multiple spaces with a single space)
         task_description = re.sub(r'\s+', ' ', task_description.strip())
-        task_description = task_description.replace(" llm ", " gpt-4o-mini ")\
-                                            .replace(" LLM ", " gpt-4o-mini ")\
-                                            .replace("`", "")\
-                                            .replace('"', "")
+        task_description = task_description.replace("```", "").replace("`", "").replace('"', "")
         instructions_for_task = await call_gpt(task_description)
         response, script_path = await generate_python_script(instructions_for_task)
         execution_output = execute_script(script_path)
@@ -382,14 +379,14 @@ async def run_task(task: str = Query(..., description="Task description")):
         for _ in range(retry_limit):
             execution_error = execution_output.get('error')
             if not execution_error:
-                return {
+                response =  {
                     "status": "Success",
                     "task": task_description,
                     "instructions": instructions_for_task,
                     "script_path": script_path,
                     "message": "Task executed successfully"
                 }
-
+                return response
             # Retry if an error occurs
             with open(script_path, 'r') as f:
                 python_code = f.read()
@@ -401,14 +398,15 @@ async def run_task(task: str = Query(..., description="Task description")):
             )
             execution_output = execute_script(script_path)  # Retry execution
 
-        return {
-            "status": "Failed",
+        response= {
+            "status": "Fail",
             "task": task_description,
             "instructions": instructions_for_task,
             "script_path": script_path,
             "error": execution_output.get('error'),
             "message": "Task Execution Failed"
         }
+        raise HTTPException(status_code=400, detail=response)
 
     except HTTPException as e:
         raise e  # Keep HTTP exception intact
@@ -427,7 +425,7 @@ async def read_file(path: str = Query(..., description="Path to the file to read
 
     try:
         file_extension = full_path.suffix.lower()
-        if file_extension in [".txt", ".log"]:
+        if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
             with open(full_path, "r", encoding="utf-8") as file:
                 return PlainTextResponse(content=file.read())
 
