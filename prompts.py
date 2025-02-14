@@ -266,15 +266,12 @@ Example: **Transcribe `/data/audio.mp3`** → Save text to `/data/audio-transcri
 14. Converting Markdown Files to HTML
 Convert `.md` files to **HTML** while maintaining structure.  
 Example: **Convert `/data/docs.md` to HTML** → Save to `/data/docs.html`.  
-15. Creating an API Endpoint to Filter CSV Data & Return JSON
+15.Create a service that creates a specified endpoint that receives a CSV and returns a JSON data. Where the JSON is expected, whether in the response body of the endpoint , or in a file will be specified by the task master 
 Read a CSV file.  
 Filter based on **specific criteria** (`age > 30`, `status = "active"`).  
 Return JSON output.  
 Example: **Filter `/data/users.csv` for active users** → Return JSON response.  
-Implement an API function that:
-Reads a CSV file.
-Filters data based on a query.
-Returns strictly formatted JSON.
+Other Tasks:
 Execution Pipeline
 LLM Task Parsing
 Extract file paths, actions, and parameters dynamically.
