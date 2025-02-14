@@ -15,14 +15,16 @@ Access only files within /data.
 Do not modify, delete, or access files outside /data.
 Output Handling
 If an output file is required but does not exist, create it inside /data.
-Ensure output is raw text (not wrapped in quotes or markdown).
+If the /data directory does not exist, create it before writing the file.
+Ensure output is raw text, using UTF-8 encoding.(not wrapped in quotes or markdown).
 Retain newlines in text output as they are (do not replace with \n).
-Remove unwanted spaces (.strip() for leading/trailing spaces).
+Strip leading/trailing spaces but preserve internal spacing
 When writing to a text file, ensure:
 Newlines remain intact (do not replace with \n).
 No extra quotes (" or ') around text content.
 Error Handling & Robustness
 Missing input → Return "Input not found".
+For any other errors, return 'Error processing request : {e}'.
 Unexpected input handling:
 Dates → Normalize to YYYY-MM-DD (handle all possible formats).
 Numbers → Convert numeric strings to int or float.
@@ -78,6 +80,8 @@ response.json()["choices"][0]["message"]["content"]
  
 LLM (gpt-4o-mini)  Examples(Concise):
 Email Extraction: Prompts for sender, recipient, both, all. do Regex validation. then , return only what is requested—No extra markdown or \n or extra messages or logs.
+
+Image Text Extraction (Based on Category)
 Categories for Image Extraction:
 Credit/Debit Numbers (Extract only numbers)
 Numbers (Extract only numerical values)
@@ -92,7 +96,6 @@ Currency (Extract values with symbols: $100, €50.75)
 Phone Numbers (Extract valid phone numbers with country codes)
 then , return only what is requested—No extra markdown or \n or extra messages or logs.
 
-Image Text Extraction (Based on Category)
 Use the following structure for image-related LLM calls with gpt-4o-mini:
 ```
 import requests
@@ -128,6 +131,6 @@ Supported date formats:
 DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
 ```
 Sort json/csv: By fields.. data.sort(key=lambda x: [x.get(field) for field in sort_fields]).
-Credit Cards Number: While asking LLM (gpt-4o-mini) ask for just number/other categories not credit card number for text extraction, regex(\b\d{13, 19}\b)
+Credit Cards Number: While asking LLM (gpt-4o-mini) for just categories based not lables like credit card number for text extraction, regex(\b\d{13, 19}\b)
 Similar Text: Use text-embedding-3-small Model for Embeddings, cosine similarity. np.dot(embeddings, embeddings.T).
 """
