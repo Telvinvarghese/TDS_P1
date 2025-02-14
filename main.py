@@ -25,11 +25,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+
 @app.get("/")
-async def root():
+async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-# ✅ API Key Validation
 API_KEY = os.getenv("AIPROXY_TOKEN")
 if not API_KEY:
     raise ValueError("API key missing")
@@ -41,20 +41,20 @@ HEADERS = {
 }
 
 FORBIDDEN_PATTERNS = [
-    r"(rm\s|shutil\.rmtree|os\.remove|os\.rmdir|subprocess\.)",  # File deletion + shell execution
+    # File deletion + shell execution
+    r"(rm\s|shutil\.rmtree|os\.remove|os\.rmdir|subprocess\.)",
     r"(eval|exec)\(",  # Prevent arbitrary code execution
     r"(\.\./|/etc/|/var/|/home/|/root/)",  # Directory traversal
-    r"open\s*\(\s*['\"]?(/etc/passwd|/etc/shadow|/var/log)['\"]?\s*\)",  # Sensitive file access
+    # Sensitive file access
+    r"open\s*\(\s*['\"]?(/etc/passwd|/etc/shadow|/var/log)['\"]?\s*\)",
 ]
 
-# ✅ Ensuring security of generated scripts
 def is_script_safe(script_code: str) -> bool:
     for pattern in FORBIDDEN_PATTERNS:
         if re.search(pattern, script_code):
             return False
     return True
 
-# ✅ Writing cost response (No need for async)
 def write_cost_response(response):
     try:
         response_json = response.json()
@@ -82,19 +82,19 @@ async def run_script(filename: str):
 async def download_and_run_script(script_url: str, user_email: str):
     script_name = os.path.basename(urlparse(script_url).path)
     script_path = os.path.abspath(os.path.join(script_name))
-    
+
     try:
-        try:
-            import uvicorn
-        except ImportError:
-            subprocess.run([sys.executable, "-m", "pip", "install", "uvicorn"], check=True)
+        subprocess.run([sys.executable, "-m", "pip",
+                       "install", "uvicorn"], check=True)
         if not os.path.exists(script_path):
             urllib.request.urlretrieve(script_url, script_path)
         os.chmod(script_path, 0o755)
-        result = subprocess.run([sys.executable, script_path, user_email,"--root=./data"], capture_output=True, text=True, check=True)
+        result = subprocess.run([sys.executable, script_path, user_email,
+                                "--root=./data"], capture_output=True, text=True, check=True)
         return {"message": "Success!", "output": result.stdout.strip()}
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Script execution failed: {e.stderr.strip()}")
+        raise HTTPException(
+            status_code=500, detail=f"Script execution failed: {e.stderr.strip()}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
@@ -120,18 +120,155 @@ async def translate_to_english(user_input: str) -> dict:
             )
             write_cost_response(response)
             if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
+                raise HTTPException(
+                    status_code=response.status_code, detail=response.text)
             response_data = response.json()
-            translated_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            translated_text = response_data.get("choices", [{}])[0].get(
+                "message", {}).get("content", "").strip()
             return {"status": "success", "output": translated_text}
         except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+            raise HTTPException(
+                status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:
-            raise HTTPException(status_code=503, detail="Translation service unavailable")
+            raise HTTPException(
+                status_code=503, detail="Translation service unavailable")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error: {str(e)}")
+
+response_format = {
+    "type": "json_schema",
+    "json_schema":
+    {
+        "name": "generate_python_script",
+        "schema":
+        {
+            "type": "object",
+            "required": ["python_dependencies", "python_code"],
+            "properties":
+            {
+                "python_code":
+                {
+                    "type": "string",
+                    "description": "Python code to perform the task."
+                },
+                "python_dependencies":
+                {
+                    "type": "array",
+                    "items":
+                    {
+                        "type": "object",
+                        "properties":
+                        {
+                            "module_name":
+                            {
+                                "type": "string",
+                                "description": "Name of the Python module."
+                            },
+                        },
+                        "required": ["module_name"],
+                        "additionalProperties": False
+                    }
+                }
+            }
+        }
+    }
+}
 
 async def generate_python_script(task_description: str) -> str:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.post(
+                BASE_URL + "/chat/completions",
+                headers=HEADERS,
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "system", "content": system_prompts}, {"role": "user", "content": task_description}],
+                    "temperature": 0.5,
+                    "response_format": response_format,
+                }
+            )
+            write_cost_response(response)
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code, detail=response.text)
+            response_data = response.json()
+            response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
+            python_dependencies = response_content['python_dependencies']
+            python_code = response_content['python_code']
+            dependencies_str = ''.join(f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
+            inline_metadata_script =f"""
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+{dependencies_str}# ]
+# ///
+"""
+            script_path = save_script(inline_metadata_script, python_code)
+            return [response_data,script_path]
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code, detail=str(e))
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=503, detail="Code generation service unavailable")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error: {str(e)}")
+
+async def resend_request(task_description: str, python_code: str, error: str) -> str:
+    update_task="""
+Update the Python code
+{python_code}
+-----
+for below task
+{task_description}
+---
+Based on Error encountered while running task
+{error}
+"""
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.post(
+                BASE_URL + "/chat/completions",
+                headers=HEADERS,
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "system", "content": system_prompts}, {"role": "user", "content": update_task}],
+                    "temperature": 0.5,
+                    "response_format": response_format,
+                }
+            )
+            write_cost_response(response)
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code, detail=response.text)
+            response_data = response.json()
+            response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
+            python_dependencies = response_content['python_dependencies']
+            python_code = response_content['python_code']
+            dependencies_str = ''.join(
+                f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
+            inline_metadata_script = f"""
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+{dependencies_str}# ]
+# ///
+"""
+            script_path = save_script(inline_metadata_script, python_code)
+            return [response_data, script_path]
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code, detail=str(e))
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=503, detail="Code generation service unavailable")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error: {str(e)}")
+
+async def generate_python_script1(task_description: str) -> str:
     """
     Uses GPT-4 to generate a Python script based on the task description.
     """
@@ -142,35 +279,46 @@ async def generate_python_script(task_description: str) -> str:
                 headers=HEADERS,
                 json={
                     "model": "gpt-4o-mini",
-                    "messages": [{"role": "system", "content": system_prompts},{"role": "user", "content": task_description}],
+                    "messages": [{"role": "system", "content": system_prompts}, {"role": "user", "content": task_description}],
                     "temperature": 0.5,
                 }
             )
             write_cost_response(response)
             if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
+                raise HTTPException(
+                    status_code=response.status_code, detail=response.text)
             response_data = response.json()
-            script_code = response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-            return script_code
+            inline_metadata_script = ""
+            python_code = response_data.get("choices", [{}])[0].get(
+                "message", {}).get("content", "").strip()
+            script_path = save_script(inline_metadata_script, python_code)
+            return [python_code, script_path]
         except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+            raise HTTPException(
+                status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:
-            raise HTTPException(status_code=503, detail="Code generation service unavailable")
+            raise HTTPException(
+                status_code=503, detail="Code generation service unavailable")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error: {str(e)}")
 
-def save_script(script_code: str) -> str:
-    script_path = os.path.abspath(os.path.join(f"script_{uuid.uuid4().hex}.py"))
+def save_script(inline_metadata_script: str, python_code: str) -> str:
+    script_path = os.path.abspath(
+        os.path.join(f"script_{uuid.uuid4().hex}.py"))
     try:
         with open(script_path, "w") as f:
-            f.write(script_code)
+            f.write(inline_metadata_script)
+            f.write(python_code)
         return script_path
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save script: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save script: {str(e)}")
 
-def execute_script(script_path: str) -> str:
+def execute_script(script_path: str) -> dict:
     """
-    Executes a Python script from the given path and returns its output.
+    Executes a Python script from the given path and returns a dictionary 
+    containing 'output' and 'error'.
     """
     try:
         result = subprocess.run(
@@ -179,53 +327,55 @@ def execute_script(script_path: str) -> str:
             text=True,
             timeout=15  # Prevent infinite loops
         )
-        return (result.stdout + result.stderr).strip()
+
+        return {
+            "output": result.stdout.strip() if result.stdout else None,
+            "error": result.stderr.strip() if result.returncode != 0 else None,
+            "exit_code": result.returncode
+        }
+
     except subprocess.TimeoutExpired:
-        return "Execution timed out!"
+        return {"output": None, "error": "Execution timed out!", "exit_code": -1}
     except Exception as e:
-        return f"Execution error: {str(e)}"
-    
+        return {"output": None, "error": str(e), "exit_code": -1}
+
 @app.post("/run")
 async def run_task(task: str = Query(..., description="Task description in plain English")):
     url_match = re.search(r"https?://[^\s]+\.py", task)
-    email_match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", task)
-    
+    email_match = re.search(
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", task)
     if url_match and email_match:
         return await download_and_run_script(url_match.group(0), email_match.group(0))
-
     try:
         translated_task = await translate_to_english(task)
         task_description = translated_task["output"]
-        
-        max_retries = 2  # Maximum retries if script execution fails
-        for attempt in range(max_retries):
-            script_code = await generate_python_script(task_description)
-            script_path = save_script(script_code)
-            execution_output = execute_script(script_path)
-            
-            if "error" not in execution_output.lower():  # Check if execution was successful
-                return {
-                    "status": "Success",
-                    "script_path": script_path,
-                    "output": execution_output
-                }
-            
-            print(f"⚠️ Execution failed, retrying... ({attempt + 1}/{max_retries})")
-
-        # If all retries fail, return an error response
-        raise HTTPException(status_code=500, detail="Script execution failed after multiple attempts.")
-
+        response, script_path = await generate_python_script(task_description)
+        execution_output = execute_script(script_path)
+        retry_limit = 0
+        while retry_limit < 2:
+            execution_error = execution_output['error']
+            if execution_error is None:  # Script executed successfully
+                return {"status": "Success","response": response,"script_path": script_path,}
+            # If there's an error, retry after extracting script contents
+            with open(script_path, 'r') as f:
+                python_code = f.read()
+                response, script_path = await resend_request(task_description=task_description, python_code=python_code, error=execution_error)
+            retry_limit += 1
+            execution_output = execute_script(script_path)  # Retry execution
+        # If it still fails after retries, return failure
+        return {"status": "Failed","error": execution_output['error'],"script_path": script_path,}
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
-        
+
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
     if not path:
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
-        raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
+        raise HTTPException(
+            status_code=400, detail="Access to files outside /data is not allowed.")
     path = os.path.abspath(os.path.join("./data", path.lstrip("/data/")))
     print(path)
     if not os.path.exists(path):
@@ -237,7 +387,8 @@ async def read_file(path: str = Query(..., description="Path to the file to read
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error reading file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
