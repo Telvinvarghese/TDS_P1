@@ -452,7 +452,7 @@ async def call_gpt(task_description: str) -> str:
             content = response.json().get("choices", [{}])[
                 0].get("message", {}).get("content", "")
             timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-            write_to_file(f"task_description/{timestamp}.txt", content)
+            write_to_file(f"task_description/task_instructions_{timestamp}.txt", content)
             return content
     except Exception as e:
         return f"Error: {str(e)}"
