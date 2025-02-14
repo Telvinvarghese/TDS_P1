@@ -87,22 +87,18 @@ def write_cost_response(response):
         with open("cost_response.json", "w") as cost_file:
             json.dump(response_json, cost_file, indent=4)
     except Exception as e:
-        print(f"❌ Failed to write response: {e}")
+        print(f"Failed to write response: {e}")
 
 async def run_script(filename: str):
-    print(f"Running script: {filename}")
     try:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, filename,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-
-        if process.returncode == 0:
-            return {"status": "success", "output": stdout.decode().strip()}
-        else:
-            return {"status": "error", "output": stderr.decode().strip()}
+        process = await asyncio.create_subprocess_exec(sys.executable, filename,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
+        return {"status": "success" if process.returncode == 0 else "error", 
+                "output": stdout.decode().strip() if process.returncode == 0 else stderr.decode().strip()}
+    except asyncio.TimeoutError:
+        process.kill()
+        return {"status": "error", "output": "Execution timed out!"}
     except Exception as e:
         return {"status": "error", "output": str(e)}
 
@@ -210,7 +206,7 @@ async def generate_python_script(task_description: str) -> str:
         {"role": "system", "content": system_prompts},  # Keep system prompt
         {"role": "user", "content": task_description}   # Fresh user input
     ]
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -218,7 +214,7 @@ async def generate_python_script(task_description: str) -> str:
                 json={
                     "model": "gpt-4o-mini",
                     "messages": conversation_history,
-                    "temperature": 0.5,
+                    "temperature": 0,
                     "response_format": response_format,
                 }
             )
@@ -266,7 +262,7 @@ Based on Error encountered while running task
         {"role": "system", "content": system_prompts},  # Keep system prompt
         {"role": "user", "content": update_task}   # Fresh user input
     ]
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.post(
                 BASE_URL + "/chat/completions",
@@ -274,7 +270,7 @@ Based on Error encountered while running task
                 json={
                     "model": "gpt-4o-mini",
                     "messages": conversation_history,
-                    "temperature": 0.5,
+                    "temperature": 0,
                     "response_format": response_format,
                 }
             )
@@ -329,7 +325,7 @@ def execute_script(script_path: str) -> dict:
             ["python3", script_path],
             capture_output=True,
             text=True,
-            timeout=15  # Prevent infinite loops
+            timeout=10  # Prevent infinite loops
         )
 
         return {
@@ -375,7 +371,7 @@ async def run_task(task: str = Query(..., description="Task description")):
         instructions_for_task = await call_gpt(task_description)
         response, script_path = await generate_python_script(instructions_for_task)
         execution_output = execute_script(script_path)
-        retry_limit = 2  # Allow up to 2 retries
+        retry_limit = 1  # Allow up to 1 retries
         for _ in range(retry_limit):
             execution_error = execution_output.get('error')
             if not execution_error:
