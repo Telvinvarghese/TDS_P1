@@ -410,25 +410,23 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    os.makedirs("data", exist_ok=True)
-    if not path:
-        raise HTTPException(status_code=400, detail="Path is empty.")
-    if not path.startswith("/data/"):
-        raise HTTPException(
-            status_code=400, detail="Access to files outside /data is not allowed.")
-    path = os.path.abspath(os.path.join("./data", path.lstrip("/data/")))
-    print(path)
-    if not os.path.exists(path):
+    base_dir = os.path.abspath("./data")  
+    full_path = os.path.abspath(os.path.join(base_dir, path.lstrip("/data/")))  # Fixed path handling
+
+    # Prevent access outside `base_dir`
+    if not full_path.startswith(base_dir):
+        raise HTTPException(status_code=400, detail="Invalid file path.")
+
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found.")
+
     try:
-        with open(path, "r") as file:
-            content = file.read()
-        return content
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="File not found.")
+        with open(full_path, "r", encoding="utf-8") as file:
+            return {"content": file.read()}
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=500, detail="File encoding error.")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error reading file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 def write_to_file(filename, content):
     with open(filename, 'w') as file:
