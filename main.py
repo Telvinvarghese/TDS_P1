@@ -384,11 +384,11 @@ async def run_task(task: str = Query(..., description="Task description")):
                 }
 
             # Retry if an error occurs
-            with open(script_path, 'r', encoding="utf-8") as f:
+            with open(script_path, 'r') as f:
                 python_code = f.read()
 
             response, script_path = await resend_request(
-                task_description=task_description,
+                task_description=instructions_for_task,
                 python_code=python_code,
                 error=execution_error
             )
@@ -421,7 +421,7 @@ async def read_file(path: str = Query(..., description="Path to the file to read
         raise HTTPException(status_code=404, detail="File not found.")
 
     try:
-        with open(full_path, "r", encoding="utf-8") as file:
+        with open(full_path, "r") as file:
             return {"content": file.read()}
     except UnicodeDecodeError:
         raise HTTPException(status_code=500, detail="File encoding error.")
@@ -437,7 +437,7 @@ async def call_gpt(task_description: str) -> str:
     payload = {
     "model": "gpt-4o-mini",  # Ensure this model is valid
     "messages": [
-        {"role": "system","content": f"Process the task description and replace any mention of 'LLM' with 'gpt-4o-mini'. If the task mentions embeddings, include the line 'text-embedding-3-small is used.' Break down this task into simpler English sentences: '{task_description}'"},
+        {"role": "system","content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' If embeddings are mentioned, add the sentence 'text-embedding-3-small is used.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
         {"role": "user","content": task_description}]
             ,"temperature": 0}
     try:
