@@ -249,13 +249,18 @@ async def generate_python_script(task_description: str) -> str:
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in non_inbuild_python_dependencies if dependency.get("module_name"))
             inline_metadata_script = f"""
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.9"
 # dependencies = [
 {dependencies_str}# ]
 # ///
 """
-            script_path = save_script(inline_metadata_script, python_code)
-            return [response_data, script_path]
+            if non_inbuild_python_dependencies==[]:
+                run_type="python"
+                script_path = save_script(inline_metadata_script="",python_code=python_code)
+            else:
+                run_type="uv"
+                script_path = save_script(inline_metadata_script, python_code)
+            return [run_type,response_data,script_path]
         except httpx.HTTPStatusError as e:
             raise HTTPException(
                 status_code=e.response.status_code, detail=str(e))
@@ -312,13 +317,18 @@ Error Encountered:
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in non_inbuild_python_dependencies if dependency.get("module_name"))
             inline_metadata_script = f"""
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.9"
 # dependencies = [
 {dependencies_str}# ]
 # ///
 """
-            script_path = save_script(inline_metadata_script, python_code)
-            return [response_data, script_path]
+            if non_inbuild_python_dependencies==[]:
+                run_type="python"
+                script_path = save_script(inline_metadata_script="",python_code=python_code)
+            else:
+                run_type="uv"
+                script_path = save_script(inline_metadata_script, python_code)
+            return [run_type,response_data,script_path]
         except httpx.HTTPStatusError as e:
             raise HTTPException(
                 status_code=e.response.status_code, detail=str(e))
@@ -342,14 +352,16 @@ def save_script(inline_metadata_script: str, python_code: str) -> str:
         raise HTTPException(
             status_code=500, detail=f"Failed to save script: {str(e)}")
 
-def execute_script(script_path: str) -> dict:
+def execute_script(run_type: str,script_path: str) -> dict:
     """
     Executes a Python script from the given path and returns a dictionary 
     containing 'output' and 'error'.
     """
     try:
-        # result = subprocess.run(["python3", script_path],capture_output=True,text=True,timeout=30)
-        result = subprocess.run(["uv","run",script_path],capture_output=True,text=True,timeout=30)
+        if run_type=="python":
+            result = subprocess.run(["python3", script_path],capture_output=True,text=True,timeout=30)
+        else:
+            result = subprocess.run(["uv","run",script_path],capture_output=True,text=True,timeout=30)
         execution_output = {
             "output": result.stdout.strip() if result.stdout else None,
             "error": result.stderr.strip() if result.returncode != 0 else None,
@@ -380,7 +392,7 @@ async def run_task(task: str = Query(..., description="Task description")):
     # Check if the task is valid
     if not is_valid_task(task_description):
         raise HTTPException(
-            status_code=400, detail="❌ Invalid or unsafe task. Please provide a meaningful and safe request.")
+            status_code=400, detail="Invalid or unsafe task. Please provide a meaningful and safe request.")
 
     # Extract script URL and email (if present)
     url_match = re.search(r"https?://[^\s]+\.py", task_description)
@@ -401,8 +413,8 @@ async def run_task(task: str = Query(..., description="Task description")):
         task_description = task_description.replace(
             "```", "").replace("`", "").replace('"', "")
         instructions_for_task = await call_gpt(task_description)
-        response, script_path = await generate_python_script(instructions_for_task)
-        execution_output = execute_script(script_path)
+        run_type,response,script_path = await generate_python_script(instructions_for_task)
+        execution_output = execute_script(run_type,script_path)
         retry_limit = 1  # Allow up to 1 retries
         for _ in range(retry_limit):
             execution_error = execution_output.get('error')
@@ -419,12 +431,12 @@ async def run_task(task: str = Query(..., description="Task description")):
             with open(script_path, 'r') as f:
                 python_code = f.read()
             print("Error to be handled : ", execution_error)
-            response, script_path = await resend_request(
+            run_type,response, script_path = await resend_request(
                 task_description=instructions_for_task,
                 python_code=python_code,
                 error=execution_error
             )
-            execution_output = execute_script(script_path)  # Retry execution
+            execution_output = execute_script(run_type,script_path)  # Retry execution
 
         response = {
             "status": "Fail",
