@@ -1,5 +1,5 @@
 # Use a smaller base image
-FROM python:3.11-slim
+FROM python:3.11-alpine
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -19,20 +19,15 @@ RUN node -v && npm -v && npx -v
 
 RUN npm install -g prettier@3.4.2
 
-# Install uv
-RUN curl -fsSL https://astral.sh/uv/install.sh | sh
-
-# Verify uv installation
-RUN uv --version && ls -lah /root/.local/bin/
-
 # Copy dependencies file first (Docker caching optimization)
-COPY requirements.txt ./
+COPY requirements.txt .
 
 # Ensure requirements.txt exists
 # RUN test -f requirements.txt
 
-# Install Python dependencies using uv
-RUN uv pip install --system -r requirements.txt --no-cache-dir --verbose
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip uv \
+    && uv pip install --system -r requirements.txt --no-cache-dir
 
 # Set AIPROXY_TOKEN
 ARG AIPROXY_TOKEN
@@ -41,8 +36,7 @@ ENV AIPROXY_TOKEN=${AIPROXY_TOKEN}
 RUN mkdir -p /data
 
 # Copy the rest of the application
-# COPY . .
-COPY main.py prompts.py ./
+COPY main.py prompts.py .
 
 # Expose FastAPI port
 EXPOSE 8000
