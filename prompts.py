@@ -15,7 +15,6 @@ Access only files within /data.
 Do not modify, delete, or access files outside /data.
 Output Handling
 If an output file is required but does not exist, create it inside /data.
-If the /data directory does not exist, create it before writing the file.
 Ensure output is raw text, using UTF-8 encoding.(not wrapped in quotes or markdown).
 Retain newlines in text output as they are (do not replace with \n).
 Strip leading/trailing spaces but preserve internal spacing
@@ -24,15 +23,13 @@ Newlines remain intact (do not replace with \n).
 No extra quotes (" or ') around text content.
 Error Handling & Robustness
 Missing input → Return "Input not found".
-For any other errors, return 'Error processing request : {e}'.
 Unexpected input handling:
 Dates → Normalize to YYYY-MM-DD (handle all possible formats) using dateutil.parser.parse() or Supported date formats as below:
 ```
 DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
 ```
 Numbers → Convert numeric strings to int or float.
-Other inputs → Keep unchanged; if invalid, log the error and terminate.
-Auto-retry once before terminating.
+Auto-retry 2 before terminating.
 
 LLM-Generated Code
 Use gpt-4o-mini
