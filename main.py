@@ -420,71 +420,40 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    # Define the root directory we allow
-    allowed_directory = Path("/data").resolve(strict=True)
-    
-    # Ensure we correctly form the path, stripping only the leading slash once
-    requested_path = allowed_directory / path.lstrip("/")  # Strip only the leading slash
-    
-    logger.info(f"Requested file path: {requested_path}")
-    
+    os.makedirs("data", exist_ok=True)
+    if not path:
+        raise HTTPException(status_code=400, detail="Path is empty.")
+    if not path.startswith("/data/"):
+        raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
+    requested_path = Path(os.path.abspath(os.path.join("./data", path.lstrip("/data/"))))
+    print(requested_path)
     try:
-        # Resolve the file to its absolute path
-        requested_path = requested_path.resolve(strict=True)
-        logger.info(f"Resolved file path: {requested_path}")
-
-        # Check if the resolved path is within the /data directory
-        if not requested_path.startswith(allowed_directory):
-            logger.error(f"Path is outside of allowed directory: {requested_path}")
-            raise HTTPException(status_code=400, detail="Invalid file path, outside of /data/ directory.")
-        
-        if not requested_path.exists():
-            logger.error(f"File not found: {requested_path}")
-            raise HTTPException(status_code=404, detail="File not found.")
-        
-        # Check if it's a file (not a directory)
-        if not requested_path.is_file():
-            logger.error(f"Path is not a file: {requested_path}")
-            raise HTTPException(status_code=400, detail="Path is not a file.")
-
-        # Get the file extension
         file_extension = requested_path.suffix.lower()
-        logger.info(f"File extension: {file_extension}")
-        
-        # Handle different file types
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
             with open(requested_path, "r", encoding="utf-8") as file:
                 return PlainTextResponse(content=file.read())
-
         elif file_extension == ".json":
             with open(requested_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
             return JSONResponse(content=data)
-
         elif file_extension == ".csv":
             with open(requested_path, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 data = [row for row in reader]
             return JSONResponse(content={"data": data})
-
         elif file_extension in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
             return FileResponse(requested_path, media_type=f"image/{file_extension.lstrip('.')}")
-
         else:
             return FileResponse(requested_path)
-
     except UnicodeDecodeError as e:
-        logger.error(f"Unicode decoding error: {e}")
         raise HTTPException(status_code=500, detail="File encoding error.")
     except FileNotFoundError as e:
-        logger.error(f"File not found error: {e}")
         raise HTTPException(status_code=404, detail="File not found.")
     except OSError as e:
-        logger.error(f"OS error: {e}")
         raise HTTPException(status_code=500, detail="OS error occurred while reading the file.")
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        
 def write_to_file(filename, content):
     with open(filename, 'w') as file:
         file.write(content)
