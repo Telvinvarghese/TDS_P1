@@ -10,11 +10,13 @@ WORKDIR /
 
 # Install system dependencies (including Node.js and npm)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates nodejs npm tesseract-ocr ffmpeg \
+    git curl ca-certificates nodejs npm tesseract-ocr ffmpeg wget sqlite3\
     && rm -rf /var/lib/apt/lists/*
 
 # Verify system installations
 RUN node -v && npm -v && npx -v && tesseract --version && ffmpeg -version
+
+RUN npm install -g prettier@3.4.2
 
 # Install uv
 RUN curl -fsSL https://astral.sh/uv/install.sh | sh
