@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Verify system installations
-RUN node -v && npm -v && npx -v && tesseract --version && ffmpeg -version
+RUN node -v && npm -v && npx -v
 
 RUN npm install -g prettier@3.4.2
 
