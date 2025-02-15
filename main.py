@@ -269,14 +269,16 @@ async def generate_python_script(task_description: str) -> str:
 
 async def resend_request(task_description: str, python_code: str, error: str) -> str:
     update_task = """
-Update the Python code
-{python_code}
------
-for below task
-{task_description}
----
-Based on Error encountered while running task
-{error}
+Update the Python code below to resolve the encountered error while performing the given task.  
+
+Task:  
+{task_description}  
+
+Original Code:  
+{python_code}  
+
+Error Encountered:  
+{error}  
 """
     # Always start with a new conversation history
     conversation_history = [
