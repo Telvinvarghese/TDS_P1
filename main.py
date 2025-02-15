@@ -15,6 +15,7 @@ import asyncio
 from prompts import system_prompts
 from pathlib import Path
 from datetime import datetime
+import logging
 
 app = FastAPI()
 
@@ -413,6 +414,9 @@ async def run_task(task: str = Query(..., description="Task description")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
     # Define the root directory we allow
@@ -421,20 +425,30 @@ async def read_file(path: str = Query(..., description="Path to the file to read
     # Combine the allowed directory with the requested file path
     requested_path = allowed_directory / path.lstrip("/")  # Strip leading slash from the path
     
+    logger.info(f"Requested file path: {requested_path}")
+    
     try:
         # Resolve the file to its absolute path
         requested_path = requested_path.resolve(strict=True)
-        
+        logger.info(f"Resolved file path: {requested_path}")
+
         # Check if the resolved path is within the /data directory
         if not requested_path.startswith(allowed_directory):
+            logger.error(f"Path is outside of allowed directory: {requested_path}")
             raise HTTPException(status_code=400, detail="Invalid file path, outside of /data/ directory.")
         
-        # Check if the file exists and is a file
-        if not requested_path.is_file():
+        if not requested_path.exists():
+            logger.error(f"File not found: {requested_path}")
             raise HTTPException(status_code=404, detail="File not found.")
+        
+        # Check if it's a file (not a directory)
+        if not requested_path.is_file():
+            logger.error(f"Path is not a file: {requested_path}")
+            raise HTTPException(status_code=400, detail="Path is not a file.")
 
         # Get the file extension
         file_extension = requested_path.suffix.lower()
+        logger.info(f"File extension: {file_extension}")
         
         # Handle different file types
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
@@ -458,15 +472,18 @@ async def read_file(path: str = Query(..., description="Path to the file to read
         else:
             return FileResponse(requested_path)
 
-    except UnicodeDecodeError:
-        logger.error("Unicode decoding error while reading the file.")
+    except UnicodeDecodeError as e:
+        logger.error(f"Unicode decoding error: {e}")
         raise HTTPException(status_code=500, detail="File encoding error.")
-    except FileNotFoundError:
-        logger.error("File not found error.")
+    except FileNotFoundError as e:
+        logger.error(f"File not found error: {e}")
         raise HTTPException(status_code=404, detail="File not found.")
+    except OSError as e:
+        logger.error(f"OS error: {e}")
+        raise HTTPException(status_code=500, detail="OS error occurred while reading the file.")
     except Exception as e:
-        logger.error(f"Error reading file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 def write_to_file(filename, content):
     with open(filename, 'w') as file:
