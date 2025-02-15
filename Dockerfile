@@ -10,11 +10,11 @@ WORKDIR /
 
 # Install system dependencies (including Node.js and npm)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates nodejs npm \
+    git curl ca-certificates nodejs npm tesseract-ocr ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify installation
-RUN node -v && npm -v && npx -v
+# Verify system installations
+RUN node -v && npm -v && npx -v && tesseract --version && ffmpeg -version
 
 # Install uv
 RUN curl -fsSL https://astral.sh/uv/install.sh | sh
