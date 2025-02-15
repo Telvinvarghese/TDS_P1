@@ -1,5 +1,5 @@
 # Use a smaller base image
-FROM python:3.11-alpine
+FROM python:3.9-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
