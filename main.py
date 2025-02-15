@@ -415,39 +415,57 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    root = os.getcwd()
-    full_path = Path(os.path.abspath(os.path.join(root, path)))  # Convert to Path object
-    if not full_path.startswith(Path('/data/')):
-        raise HTTPException(status_code=400, detail="Invalid file path.")
-
-    if not full_path.exists() or not full_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found.")
-
+    # Define the root directory we allow
+    allowed_directory = Path("/data").resolve(strict=True)
+    
+    # Combine the allowed directory with the requested file path
+    requested_path = allowed_directory / path.lstrip("/")  # Strip leading slash from the path
+    
     try:
-        file_extension = full_path.suffix.lower()  # Now full_path is a Path object
+        # Resolve the file to its absolute path
+        requested_path = requested_path.resolve(strict=True)
+        
+        # Check if the resolved path is within the /data directory
+        if not requested_path.startswith(allowed_directory):
+            raise HTTPException(status_code=400, detail="Invalid file path, outside of /data/ directory.")
+        
+        # Check if the file exists and is a file
+        if not requested_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found.")
+
+        # Get the file extension
+        file_extension = requested_path.suffix.lower()
+        
+        # Handle different file types
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
-            with open(full_path, "r", encoding="utf-8") as file:
+            with open(requested_path, "r", encoding="utf-8") as file:
                 return PlainTextResponse(content=file.read())
 
         elif file_extension == ".json":
-            with open(full_path, "r", encoding="utf-8") as file:
+            with open(requested_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
-            return JSONResponse(content=json.dumps(data, separators=(",", ":")), media_type="application/json")
+            return JSONResponse(content=data)
 
         elif file_extension == ".csv":
-            with open(full_path, "r", encoding="utf-8") as file:
+            with open(requested_path, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 data = [row for row in reader]
-            return JSONResponse(content=json.dumps({"data": data}, separators=(",", ":")), media_type="application/json")
+            return JSONResponse(content={"data": data})
 
         elif file_extension in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-            return FileResponse(full_path, media_type=f"image/{file_extension.lstrip('.')}")
+            return FileResponse(requested_path, media_type=f"image/{file_extension.lstrip('.')}")
 
         else:
-            return FileResponse(full_path)  # Default case for other file types
+            return FileResponse(requested_path)
+
     except UnicodeDecodeError:
+        logger.error("Unicode decoding error while reading the file.")
         raise HTTPException(status_code=500, detail="File encoding error.")
+    except FileNotFoundError:
+        logger.error("File not found error.")
+        raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
+        logger.error(f"Error reading file: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 def write_to_file(filename, content):
