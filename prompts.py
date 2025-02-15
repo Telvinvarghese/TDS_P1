@@ -24,10 +24,6 @@ No extra quotes (" or ') around text content.
 Error Handling & Robustness
 Missing input → Return "Input not found".
 Unexpected input handling:
-Files with Dates alone → Normalize to YYYY-MM-DD (handle all possible formats) using dateutil.parser.parse() or Supported date formats as below:
-```
-DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
-```
 Auto-retry 2 before terminating.
 
 LLM-Generated Code
@@ -187,7 +183,7 @@ def embeddings(texts):
 
 Automation Tasks(Concise):
 Format File: Tool(Prettier), version, in -place. subprocess.run(["npx", f"prettier@{prettier_version}", "--write", ...]). Parser detection.
-Dates: Normalize formats to YYYY-MM-DD using dateutil.parser.parse(). Weekday count.
+Files with Dates alone: Normalize formats to YYYY-MM-DD using dateutil.parser.parse().
 Supported date formats:
 ```
 DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
