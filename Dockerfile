@@ -10,8 +10,9 @@ WORKDIR /
 
 # Install system dependencies (including Node.js and npm)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates nodejs npm tesseract-ocr ffmpeg wget sqlite3\
-    && rm -rf /var/lib/apt/lists/*
+    git curl ca-certificates nodejs npm \
+    tesseract-ocr ffmpeg wget sqlite3 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Verify system installations
 RUN node -v && npm -v && npx -v && tesseract --version && ffmpeg -version
@@ -28,7 +29,7 @@ RUN uv --version && ls -lah /root/.local/bin/
 COPY requirements.txt ./
 
 # Ensure requirements.txt exists
-RUN test -f requirements.txt
+# RUN test -f requirements.txt
 
 # Install Python dependencies using uv
 RUN uv pip install --system -r requirements.txt --no-cache-dir --verbose
