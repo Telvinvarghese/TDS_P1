@@ -26,7 +26,10 @@ Error Handling & Robustness
 Missing input → Return "Input not found".
 For any other errors, return 'Error processing request : {e}'.
 Unexpected input handling:
-Dates → Normalize to YYYY-MM-DD (handle all possible formats).
+Dates → Normalize to YYYY-MM-DD (handle all possible formats) using dateutil.parser.parse() or Supported date formats as below:
+```
+DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
+```
 Numbers → Convert numeric strings to int or float.
 Other inputs → Keep unchanged; if invalid, log the error and terminate.
 Auto-retry once before terminating.
@@ -52,22 +55,10 @@ File processing:
 Operate only within /data.
 
 API Handling
-Use authenticated requests via AIPROXY_TOKEN.
 Implement retry logic for failures.
 Sanitize API responses before processing.
 
-API Key:
-```python
-import os
-openai_api_key = os.getenv("AIPROXY_TOKEN")
-if not openai_api_key:
-    print("Error: OpenAI API key missing.")
-headers = {"Content-Type": "application/json",
-           "Authorization": f"Bearer {openai_api_key}"}
-```
-
 LLM Usage:
-
 Chat: 
 gpt-4o-mini, 
 http://aiproxy.sanand.workers.dev/openai/v1/chat/completions, 
@@ -76,14 +67,57 @@ response.json()["choices"][0]["message"]["content"]
 Embedding: 
 text-embedding-3-small, 
 http://aiproxy.sanand.workers.dev/openai/v1/embeddings,
-response.json()["choices"][0]["message"]["content"]
+response.json()["data"][0]["embedding"]
+```
+Ensure proper error handling:
+Handle failed requests gracefully.
+Implement retry logic for network failures.
  
 LLM (gpt-4o-mini)  Examples(Concise):
-Email Extraction: Prompts for sender, recipient, both, all. do Regex validation. then , return only what is requested—No extra markdown or \n or extra messages or logs.
 
+Email Extraction:
+Categories for Email Extraction:
+sender(Extract only sender's email address)
+recipient(Extract only recipient's email address)
+both(Extract only sender's and recipient's email address)
+all(Extract all email address)
+
+Use the following structure for Email Extraction LLM calls with gpt-4o-mini:
+```
+import requests
+import os
+openai_api_key = os.getenv("AIPROXY_TOKEN")
+if not openai_api_key:
+    print("Error: OpenAI API key missing.")
+
+headers={"Content-Type": "application/json","Authorization": f"Bearer {openai_api_key}"}
+
+def call_llm_api(payload,headers,endpoint):
+    try:
+        response = requests.post(endpoint, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return None
+
+def extract_email_addresses(email_content, category):
+    payload = {
+        'model': 'gpt-4o-mini',
+        'messages': [{
+            'role': 'user',
+            'content': 'Extract the ' + category + ' email address from the following email content: ' + email_content
+        }]
+    }
+    response = call_llm_api(payload, headers, 'http://aiproxy.sanand.workers.dev/openai/v1/chat/completions')
+    return response["choices"][0]["message"]["content"] if response else None
+
+```
+Also, Regex validation. then , return only what is requested—No extra markdown or \n or extra messages or logs.
+
+Image Text Extraction:
 Image Text Extraction (Based on Category)
 Categories for Image Extraction:
-Credit/Debit Numbers (Extract only numbers)
+Numbers (Extract only Credit/Debit Card numbers)
 Numbers (Extract only numerical values)
 Alphabetic (Extract only letters)
 Alphanumeric (Extract letters + numbers)
@@ -99,10 +133,16 @@ then , return only what is requested—No extra markdown or \n or extra messages
 Use the following structure for image-related LLM calls with gpt-4o-mini:
 ```
 import requests
+import os
+openai_api_key = os.getenv("AIPROXY_TOKEN")
+if not openai_api_key:
+    print("Error: OpenAI API key missing.")
 
-def call_llm_api(payload, endpoint):
+headers={"Content-Type": "application/json","Authorization": f"Bearer {openai_api_key}"}
+
+def call_llm_api(payload,headers,endpoint):
     try:
-        response = requests.post(endpoint, headers={"Content-Type": "application/json"}, json=payload)
+        response = requests.post(endpoint, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -119,18 +159,48 @@ def extract_text_from_image(base64_image, category):
             ]
         }]
     }
-    response = call_llm_api(payload, "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions")
+    response = call_llm_api(payload,headers,"http://aiproxy.sanand.workers.dev/openai/v1/chat/completions")
     return response["choices"][0]["message"]["content"] if response else None
 
 ```
+
+Use the following structure for Similar Text LLM calls with text-embedding-3-small:
+```
+import requests
+import os
+openai_api_key = os.getenv("AIPROXY_TOKEN")
+if not openai_api_key:
+    print("Error: OpenAI API key missing.")
+
+headers={"Content-Type": "application/json","Authorization": f"Bearer {openai_api_key}"}
+def call_llm_api(endpoint, headers, payload):
+    try:
+        response = requests.post(endpoint, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return None
+
+with open(input_file, 'r', encoding="utf-8") as f:
+    texts = [line.strip() for line in f.readlines()]
+
+def embeddings(texts):
+    payload = {
+        "model": "text-embedding-3-small",
+        "input": texts
+    }
+    response = call_llm_api(payload,headers,"http://aiproxy.sanand.workers.dev/openai/v1/embeddings")
+    return response.json()["data"][0]["embedding"] if response else None
+```
+
 Automation Tasks(Concise):
 Format File: Tool(Prettier), version, in -place. subprocess.run(["npx", f"prettier@{prettier_version}", "--write", ...]). Parser detection.
-Dates: Normalize formats. dateutil.parser.parse(). Weekday count.
+Dates: Normalize formats to YYYY-MM-DD using dateutil.parser.parse(). Weekday count.
 Supported date formats:
 ```
 DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
 ```
 Sort json/csv: By fields.. data.sort(key=lambda x: [x.get(field) for field in sort_fields]).
-Credit Cards Number: While asking LLM (gpt-4o-mini) for just categories based not lables like credit card number for text extraction, regex(\b\d{13, 19}\b)
+Credit Cards Number: While asking LLM (gpt-4o-mini) for just categories based not labels for text extraction,then use regex(\b\d{13, 19}\b)
 Similar Text: Use text-embedding-3-small Model for Embeddings, cosine similarity. np.dot(embeddings, embeddings.T).
 """
