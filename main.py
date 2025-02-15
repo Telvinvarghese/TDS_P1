@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Query, HTTPException # type: ignore
-from fastapi.middleware.cors import CORSMiddleware # type: ignore
-from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse # type: ignore
+from fastapi import FastAPI, Query, HTTPException  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse  # type: ignore
 import urllib.request
 from urllib.parse import urlparse
 import subprocess
@@ -37,7 +37,8 @@ app.add_middleware(
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = os.getenv("AIPROXY_TOKEN")
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIyZjIwMDAxNTBAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Po4ffWC8vCUNjE62Epu-JdCgfedBKQHaypJiy6tjyHI"
+# os.getenv("AIPROXY_TOKEN")
 if not API_KEY:
     raise ValueError("API key missing")
 
@@ -52,6 +53,7 @@ FORBIDDEN_TASKS = [
     "delete system files", "shutdown server", "access unauthorized data",
     "generate fake identity", "scrape personal data", "open ports", "send spam emails"
 ]
+
 
 def is_valid_task(task_description: str) -> bool:
     """
@@ -72,6 +74,7 @@ def is_valid_task(task_description: str) -> bool:
 
     return True
 
+
 FORBIDDEN_PATTERNS = [
     # File deletion + shell execution
     r"(rm\s|shutil\.rmtree|os\.remove|os\.rmdir|subprocess\.)",
@@ -81,11 +84,13 @@ FORBIDDEN_PATTERNS = [
     r"open\s*\(\s*['\"]?(/etc/passwd|/etc/shadow|/var/log)['\"]?\s*\)",
 ]
 
+
 def is_script_safe(script_code: str) -> bool:
     for pattern in FORBIDDEN_PATTERNS:
         if re.search(pattern, script_code):
             return False
     return True
+
 
 def write_cost_response(response):
     try:
@@ -95,18 +100,20 @@ def write_cost_response(response):
     except Exception as e:
         print(f"Failed to write response: {e}")
 
+
 async def run_script(filename: str):
     try:
         process = await asyncio.create_subprocess_exec(sys.executable, filename,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                                                       stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
-        return {"status": "success" if process.returncode == 0 else "error", 
+        return {"status": "success" if process.returncode == 0 else "error",
                 "output": stdout.decode().strip() if process.returncode == 0 else stderr.decode().strip()}
     except asyncio.TimeoutError:
         process.kill()
         return {"status": "error", "output": "Execution timed out!"}
     except Exception as e:
         return {"status": "error", "output": str(e)}
+
 
 async def download_and_run_script(script_url: str, user_email: str):
     print(f"Downloading and running script: {script_url}")
@@ -128,15 +135,17 @@ async def download_and_run_script(script_url: str, user_email: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 def is_english_string(text: str) -> bool:
     return bool(re.match(r"^[\x00-\x7F]+$", text))
 
+
 async def translate_to_english(user_input: str) -> dict:
-    print(f"Translating text to English: {user_input}")
     if is_english_string(user_input):
         return {"status": "success", "output": user_input}
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
+            print(f"Translating text to English: {user_input}")
             response = await client.post(
                 BASE_URL + "/chat/completions",
                 headers=HEADERS,
@@ -206,6 +215,16 @@ response_format = {
     }
 }
 
+inbuild = [
+    "abc", "ast", "array", "atexit", "binascii", "bisect", "builtins",
+    "cmath", "codecs", "collections", "csv", "datetime", "errno",
+    "faulthandler", "fcntl", "functools", "gc", "grp", "heapq", "io",
+    "itertools", "locale", "marshal", "math", "operator", "pickle",
+    "posix", "pwd", "pyexpat", "random", "select", "signal", "socket",
+    "spwd", "sre_compile", "stat", "statistics", "string", "struct",
+    "symtable", "sys", "syslog", "threading", "time", "tracemalloc",
+    "unicodedata", "warnings", "weakref", "zlib", "subprocess", "os", "json", "datetime",
+]
 async def generate_python_script(task_description: str) -> str:
     # Always start with a new conversation history
     conversation_history = [
@@ -229,18 +248,15 @@ async def generate_python_script(task_description: str) -> str:
                 raise HTTPException(
                     status_code=response.status_code, detail=response.text)
             response_data = response.json()
-            response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
+            response_content = json.loads(response_data.get("choices", [{}])[
+                                          0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
-            for package in python_dependencies:
-                try:
-                    # Check if package is installed
-                    pkg_resources.get_distribution(package)
-                except pkg_resources.DistributionNotFound:
-                    # If not installed, install it
-                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+            python_dependencies = [dependency for dependency in python_dependencies if dependency.get(
+                "module_name") not in inbuild]
             python_code = response_content['python_code']
-            dependencies_str = ''.join(f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
-            inline_metadata_script =f"""
+            dependencies_str = ''.join(
+                f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
+            inline_metadata_script = f"""
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
@@ -248,7 +264,7 @@ async def generate_python_script(task_description: str) -> str:
 # ///
 """
             script_path = save_script(inline_metadata_script, python_code)
-            return [response_data,script_path]
+            return [response_data, script_path]
         except httpx.HTTPStatusError as e:
             raise HTTPException(
                 status_code=e.response.status_code, detail=str(e))
@@ -259,8 +275,9 @@ async def generate_python_script(task_description: str) -> str:
             raise HTTPException(
                 status_code=500, detail=f"Unexpected error: {str(e)}")
 
+
 async def resend_request(task_description: str, python_code: str, error: str) -> str:
-    update_task="""
+    update_task = """
 Update the Python code
 {python_code}
 -----
@@ -292,15 +309,11 @@ Based on Error encountered while running task
                 raise HTTPException(
                     status_code=response.status_code, detail=response.text)
             response_data = response.json()
-            response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
+            response_content = json.loads(response_data.get("choices", [{}])[
+                                          0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
-            for package in python_dependencies:
-                try:
-                    # Check if package is installed
-                    pkg_resources.get_distribution(package)
-                except pkg_resources.DistributionNotFound:
-                    # If not installed, install it
-                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+            python_dependencies = [
+                dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
             python_code = response_content['python_code']
             dependencies_str = ''.join(
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
@@ -323,6 +336,7 @@ Based on Error encountered while running task
             raise HTTPException(
                 status_code=500, detail=f"Unexpected error: {str(e)}")
 
+
 def save_script(inline_metadata_script: str, python_code: str) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     script_path = os.path.abspath(f"script_{timestamp}.py")
@@ -341,22 +355,22 @@ def execute_script(script_path: str) -> dict:
     containing 'output' and 'error'.
     """
     try:
-        result = subprocess.run(
-            ["python3", script_path],
-            capture_output=True,
-            text=True,
-            timeout=15  # Prevent infinite loops
-        )
-
-        return {
+        # result = subprocess.run(["python3", script_path],capture_output=True,text=True,timeout=30)
+        result = subprocess.run(["uv","run",script_path],capture_output=True,text=True,timeout=30)
+        execution_output = {
             "output": result.stdout.strip() if result.stdout else None,
             "error": result.stderr.strip() if result.returncode != 0 else None,
             "exit_code": result.returncode
         }
+        print(execution_output)
+        return execution_output
 
     except subprocess.TimeoutExpired:
         return {"output": None, "error": "Execution timed out!", "exit_code": -1}
+    except FileNotFoundError:
+        return  {"output": None, "error": "'uv' is not installed or not found in PATH!"}
     except Exception as e:
+        print(f"Error executing script: {str(e)}")
         return {"output": None, "error": str(e), "exit_code": -1}
 
 @app.post("/run")
@@ -364,7 +378,8 @@ async def run_task(task: str = Query(..., description="Task description")):
     translated_task = await translate_to_english(task)
     task_description = translated_task["output"].strip().lower()
 
-    greetings = ["hi", "hello", "hey", "good morning","good afternoon", "good evening"]
+    greetings = ["hi", "hello", "hey", "good morning",
+                 "good afternoon", "good evening"]
 
     if task_description in greetings:
         return {"status": "success", "message": "Hello! How can I assist you?"}
@@ -390,7 +405,8 @@ async def run_task(task: str = Query(..., description="Task description")):
     try:
         # Normalize spaces (remove extra spaces and replace multiple spaces with a single space)
         task_description = re.sub(r'\s+', ' ', task_description.strip())
-        task_description = task_description.replace("```", "").replace("`", "").replace('"', "")
+        task_description = task_description.replace(
+            "```", "").replace("`", "").replace('"', "")
         instructions_for_task = await call_gpt(task_description)
         response, script_path = await generate_python_script(instructions_for_task)
         execution_output = execute_script(script_path)
@@ -398,7 +414,7 @@ async def run_task(task: str = Query(..., description="Task description")):
         for _ in range(retry_limit):
             execution_error = execution_output.get('error')
             if not execution_error:
-                response =  {
+                response = {
                     "status": "Success",
                     "task": task_description,
                     "instructions": instructions_for_task,
@@ -409,7 +425,7 @@ async def run_task(task: str = Query(..., description="Task description")):
             # Retry if an error occurs
             with open(script_path, 'r') as f:
                 python_code = f.read()
-
+            print("error to be handled", execution_error)
             response, script_path = await resend_request(
                 task_description=instructions_for_task,
                 python_code=python_code,
@@ -417,7 +433,7 @@ async def run_task(task: str = Query(..., description="Task description")):
             )
             execution_output = execute_script(script_path)  # Retry execution
 
-        response= {
+        response = {
             "status": "Fail",
             "task": task_description,
             "instructions": instructions_for_task,
@@ -438,8 +454,10 @@ async def read_file(path: str = Query(..., description="Path to the file to read
     if not path:
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
-        raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
-    requested_path=Path(os.path.abspath(os.path.join("./data", path.replace("/data/", ""))))
+        raise HTTPException(
+            status_code=400, detail="Access to files outside /data is not allowed.")
+    requested_path = Path(os.path.abspath(
+        os.path.join("./data", path.replace("/data/", ""))))
     try:
         file_extension = requested_path.suffix.lower()
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
@@ -459,8 +477,9 @@ async def read_file(path: str = Query(..., description="Path to the file to read
         else:
             return FileResponse(requested_path)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-        
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected error: {str(e)}")
+
 def write_to_file(filename, content):
     with open(filename, 'w') as file:
         file.write(content)
@@ -468,11 +487,10 @@ def write_to_file(filename, content):
 async def call_gpt(task_description: str) -> str:
     os.makedirs("task_description", exist_ok=True)
     payload = {
-    "model": "gpt-4o-mini",  # Ensure this model is valid
-    "messages": [
-        {"role": "system","content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
-        {"role": "user","content": task_description}]
-            ,"temperature": 0}
+        "model": "gpt-4o-mini",  # Ensure this model is valid
+        "messages": [
+            {"role": "system", "content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
+            {"role": "user", "content": task_description}], "temperature": 0}
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(f"{BASE_URL}/chat/completions", headers=HEADERS, json=payload)
@@ -480,7 +498,8 @@ async def call_gpt(task_description: str) -> str:
             content = response.json().get("choices", [{}])[
                 0].get("message", {}).get("content", "")
             timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-            write_to_file(f"task_description/task_instructions_{timestamp}.txt", content)
+            write_to_file(
+                f"task_description/task_instructions_{timestamp}.txt", content)
             return content
     except Exception as e:
         return f"Error: {str(e)}"
