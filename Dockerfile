@@ -23,7 +23,7 @@ RUN curl -fsSL https://astral.sh/uv/install.sh | sh
 RUN uv --version && ls -lah /root/.local/bin/
 
 # Copy dependencies file first (Docker caching optimization)
-COPY requirements.txt .
+COPY requirements.txt ./
 
 # Ensure requirements.txt exists
 RUN test -f requirements.txt
@@ -32,7 +32,8 @@ RUN test -f requirements.txt
 RUN uv pip install --system -r requirements.txt --no-cache-dir --verbose
 
 # Copy the rest of the application
-COPY . .
+# COPY . .
+COPY main.py prompts.py ./
 
 # Expose FastAPI port
 EXPOSE 8000
