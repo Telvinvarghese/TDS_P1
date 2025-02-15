@@ -6,7 +6,6 @@ cffi
 charset-normalizer
 click
 duckdb
-easyocr
 exceptiongroup
 Faker
 fastapi
@@ -17,13 +16,10 @@ httpx
 jinja2
 lxml
 markdown2
-moviepy
 mypy
 numpy
 ocrmypdf
-opencv-python-headless
 packaging
-pandas
 pillow
 pydantic
 pydub
@@ -31,14 +27,13 @@ python-dateutil
 python-dotenv
 python-frontmatter
 pytest
+pytesseract
 pyyaml
 requests
 rich
-selenium
 sniffio
 soupsieve
 speechrecognition
-sqlalchemy
 starlette
 tqdm
 typer
@@ -46,5 +41,5 @@ tzdata
 urllib3
 uvicorn
 websockets
-faster-whisper
+whisper
 loguru  # Advanced logging
