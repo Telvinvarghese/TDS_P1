@@ -380,8 +380,8 @@ def execute_script(run_type: str,script_path: str) -> dict:
 
 @app.post("/run")
 async def run_task(task: str = Query(..., description="Task description")):
-    os.makedirs("data", exist_ok=True)
-    os.chmod("data", 0o777)
+    os.makedirs("/data", exist_ok=True)
+    os.chmod("/data", 0o777)
     translated_task = await translate_to_english(task)
     task_description = translated_task["output"].strip().lower()
 
@@ -457,8 +457,8 @@ async def run_task(task: str = Query(..., description="Task description")):
 
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
-    os.makedirs("data", exist_ok=True)
-    os.chmod("data", 0o777)
+    os.makedirs("/data", exist_ok=True)
+    os.chmod("/data", 0o777)
     if not path:
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
@@ -493,7 +493,7 @@ def write_to_file(filename, content):
         file.write(content)
 
 async def call_gpt(task_description: str) -> str:
-    os.makedirs("task_description", exist_ok=True)
+    os.makedirs("/task_description", exist_ok=True)
     payload = {
         "model": "gpt-4o-mini",  # Ensure this model is valid
         "messages": [
