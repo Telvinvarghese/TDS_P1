@@ -497,7 +497,7 @@ async def call_gpt(task_description: str) -> str:
     payload = {
         "model": "gpt-4o-mini",  # Ensure this model is valid
         "messages": [
-            {"role": "system", "content": f"Rewrite the task description by replacing 'LLM' with 'gpt-4o-mini.' Also, check for phrases like 'Only write' or 'Just write' and refine them for better clarity. Finally, simplify the task description into clear and concise English while preserving its original meaning.: '{task_description}'"},
+            {"role": "system", "content": f"Replace 'LLM' with 'GPT-4o-mini' in the task description. Improve clarity by refining phrases like 'Only write' or 'Just write.' Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
             {"role": "user", "content": task_description}], "temperature": 0}
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
