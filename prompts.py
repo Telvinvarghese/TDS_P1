@@ -118,7 +118,7 @@ Currency (Extract values with symbols: $100, €50.75)
 Phone Numbers (Extract valid phone numbers with country codes)
 then , return only what is requested—No extra markdown or \n or extra messages or logs.
 
-Use the following structure for image-related LLM calls with gpt-4o-mini:
+Use the following structure for Image-related LLM calls with gpt-4o-mini:
 ```
 import requests
 import os
@@ -180,7 +180,6 @@ def embeddings(texts):
     response = call_llm_api(payload,headers,"http://aiproxy.sanand.workers.dev/openai/v1/embeddings")
     return response.json()["data"][0]["embedding"] if response else None
 ```
-
 Automation Tasks(Concise):
 Format File: Tool(Prettier), version, in -place. subprocess.run(["npx", f"prettier@{prettier_version}", "--write", ...]). Parser detection.
 Files with Dates alone: Normalize formats to YYYY-MM-DD using dateutil.parser.parse().
@@ -192,4 +191,23 @@ Sort json/csv: By fields.. data.sort(key=lambda x: [x.get(field) for field in so
 Credit Cards Number: While asking LLM (gpt-4o-mini) for just categories based not labels for text extraction,then use regex(\b\d{13, 19}\b)
 Similar Text: Use text-embedding-3-small Model for Embeddings, cosine similarity. np.dot(embeddings, embeddings.T).
 maps each filename (without the /data/... prefix) :  maps each filepath (without the /data/... prefix)
+
+Use the following structure for any task requiring LLM Calls with gpt-4o-mini
+````
+import requests
+import os
+openai_api_key = os.getenv("AIPROXY_TOKEN")
+if not openai_api_key:
+    print("Error: OpenAI API key missing.")
+
+headers={"Content-Type": "application/json","Authorization": f"Bearer {openai_api_key}"}
+
+def call_llm_api(payload,headers,endpoint):
+    try:
+        response = requests.post(endpoint, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return None
+```
 """
