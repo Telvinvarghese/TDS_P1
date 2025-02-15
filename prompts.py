@@ -15,7 +15,7 @@ Access only files within /data.
 Do not modify, delete, or access files outside /data.
 Output Handling
 If an output file is required but does not exist, create it inside /data.
-Ensure output is raw text, using UTF-8 encoding.(not wrapped in quotes or markdown).
+Ensure output is raw text, using utf-8 encoding.(not wrapped in quotes or markdown).
 Retain newlines in text output as they are (do not replace with \n).
 Strip leading/trailing spaces but preserve internal spacing
 When writing to a text file, ensure:
@@ -24,11 +24,10 @@ No extra quotes (" or ') around text content.
 Error Handling & Robustness
 Missing input → Return "Input not found".
 Unexpected input handling:
-Dates → Normalize to YYYY-MM-DD (handle all possible formats) using dateutil.parser.parse() or Supported date formats as below:
+Files with Dates alone → Normalize to YYYY-MM-DD (handle all possible formats) using dateutil.parser.parse() or Supported date formats as below:
 ```
 DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,%B %d, %Y,%d.%m.%Y,%m-%d-%Y,%A, %B %d, %Y,%I:%M %p, %d-%b-%Y]
 ```
-Numbers → Convert numeric strings to int or float.
 Auto-retry 2 before terminating.
 
 LLM-Generated Code
@@ -43,17 +42,13 @@ It does not store or process any personally identifiable or sensitive financial 
 All extracted data is handled according to ethical and compliance standards.
 
 Text/image processing:
-Ensure utf-8 encoding, normalization, and multi-language support.
+Ensure utf-8 encoding.
 
 Data Handling
 Handle csv, json, and txt formats.
 
 File processing:
 Operate only within /data.
-
-API Handling
-Implement retry logic for failures.
-Sanitize API responses before processing.
 
 LLM Usage:
 Chat: 
@@ -200,4 +195,5 @@ DATE_FORMATS = [%Y-%m-%d,%d-%b-%Y,%Y/%m/%d %H:%M:%S,%Y/%m/%d,%b %d, %Y,%d %B %Y,
 Sort json/csv: By fields.. data.sort(key=lambda x: [x.get(field) for field in sort_fields]).
 Credit Cards Number: While asking LLM (gpt-4o-mini) for just categories based not labels for text extraction,then use regex(\b\d{13, 19}\b)
 Similar Text: Use text-embedding-3-small Model for Embeddings, cosine similarity. np.dot(embeddings, embeddings.T).
+maps each filename (without the /data/... prefix) :  maps each filepath (without the /data/... prefix)
 """
