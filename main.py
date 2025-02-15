@@ -380,6 +380,8 @@ def execute_script(run_type: str,script_path: str) -> dict:
 
 @app.post("/run")
 async def run_task(task: str = Query(..., description="Task description")):
+    os.makedirs("data", exist_ok=True)
+    os.chmod("data", 0o777)
     translated_task = await translate_to_english(task)
     task_description = translated_task["output"].strip().lower()
 
@@ -456,6 +458,7 @@ async def run_task(task: str = Query(..., description="Task description")):
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
     os.makedirs("data", exist_ok=True)
+    os.chmod("data", 0o777)
     if not path:
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
@@ -476,7 +479,7 @@ async def read_file(path: str = Query(..., description="Path to the file to read
             with open(requested_path, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 data = [row for row in reader]
-            return JSONResponse(content={"data": data})
+            return JSONResponse(content=data)
         elif file_extension in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
             return FileResponse(requested_path, media_type=f"image/{file_extension.lstrip('.')}")
         else:
