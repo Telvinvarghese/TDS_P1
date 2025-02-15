@@ -17,6 +17,10 @@ from pathlib import Path
 from datetime import datetime
 import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 # Add CORS middleware to allow cross-origin requests
@@ -414,16 +418,13 @@ async def run_task(task: str = Query(..., description="Task description")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
     # Define the root directory we allow
     allowed_directory = Path("/data").resolve(strict=True)
     
-    # Combine the allowed directory with the requested file path
-    requested_path = allowed_directory / path.lstrip("/")  # Strip leading slash from the path
+    # Ensure we correctly form the path, stripping only the leading slash once
+    requested_path = allowed_directory / path.lstrip("/")  # Strip only the leading slash
     
     logger.info(f"Requested file path: {requested_path}")
     
@@ -484,7 +485,6 @@ async def read_file(path: str = Query(..., description="Path to the file to read
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-
 def write_to_file(filename, content):
     with open(filename, 'w') as file:
         file.write(content)
