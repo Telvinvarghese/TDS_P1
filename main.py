@@ -16,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 import logging
 import pkg_resources
+import pkgutil
+import site
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -215,16 +217,6 @@ response_format = {
     }
 }
 
-inbuild = [
-    "abc", "ast", "array", "atexit", "binascii", "bisect", "builtins",
-    "cmath", "codecs", "collections", "csv", "datetime", "errno",
-    "faulthandler", "fcntl", "functools", "gc", "grp", "heapq", "io",
-    "itertools", "locale", "marshal", "math", "operator", "pickle",
-    "posix", "pwd", "pyexpat", "random", "select", "signal", "socket",
-    "spwd", "sre_compile", "stat", "statistics", "string", "struct",
-    "symtable", "sys", "syslog", "threading", "time", "tracemalloc",
-    "unicodedata", "warnings", "weakref", "zlib", "subprocess", "os", "json", "datetime",
-]
 async def generate_python_script(task_description: str) -> str:
     # Always start with a new conversation history
     conversation_history = [
@@ -251,8 +243,8 @@ async def generate_python_script(task_description: str) -> str:
             response_content = json.loads(response_data.get("choices", [{}])[
                                           0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
-            python_dependencies = [dependency for dependency in python_dependencies if dependency.get(
-                "module_name") not in inbuild]
+            inbuild = sorted(set(sys.builtin_module_names) | {m.name for m in pkgutil.iter_modules()} | {m.name for m in pkgutil.iter_modules(site.getsitepackages())})
+            python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
             python_code = response_content['python_code']
             dependencies_str = ''.join(
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
@@ -312,8 +304,8 @@ Based on Error encountered while running task
             response_content = json.loads(response_data.get("choices", [{}])[
                                           0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
-            python_dependencies = [
-                dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
+            inbuild = sorted(set(sys.builtin_module_names) | {m.name for m in pkgutil.iter_modules()} | {m.name for m in pkgutil.iter_modules(site.getsitepackages())})
+            python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
             python_code = response_content['python_code']
             dependencies_str = ''.join(
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
@@ -362,7 +354,7 @@ def execute_script(script_path: str) -> dict:
             "error": result.stderr.strip() if result.returncode != 0 else None,
             "exit_code": result.returncode
         }
-        print(execution_output)
+        # print(execution_output)
         return execution_output
 
     except subprocess.TimeoutExpired:
@@ -425,7 +417,7 @@ async def run_task(task: str = Query(..., description="Task description")):
             # Retry if an error occurs
             with open(script_path, 'r') as f:
                 python_code = f.read()
-            print("error to be handled", execution_error)
+            print("Error to be handled : ", execution_error)
             response, script_path = await resend_request(
                 task_description=instructions_for_task,
                 python_code=python_code,
