@@ -416,15 +416,15 @@ async def run_task(task: str = Query(..., description="Task description")):
 @app.get("/read")
 async def read_file(path: str = Query(..., description="Path to the file to read")):
     root = os.getcwd()
-    full_path = os.path.abspath(os.path.join(root, path))
-    if not full_path.startswith('/data/'):
+    full_path = Path(os.path.abspath(os.path.join(root, path)))  # Convert to Path object
+    if not full_path.startswith(Path('/data/')):
         raise HTTPException(status_code=400, detail="Invalid file path.")
 
-    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+    if not full_path.exists() or not full_path.is_file():
         raise HTTPException(status_code=404, detail="File not found.")
 
     try:
-        file_extension = full_path.suffix.lower()
+        file_extension = full_path.suffix.lower()  # Now full_path is a Path object
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
             with open(full_path, "r", encoding="utf-8") as file:
                 return PlainTextResponse(content=file.read())
