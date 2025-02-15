@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, Query, HTTPException # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse # type: ignore
 import urllib.request
 from urllib.parse import urlparse
 import subprocess
@@ -9,13 +9,13 @@ import json
 import csv
 import sys
 import httpx
-import uuid
 import re
 import asyncio
 from prompts import system_prompts
 from pathlib import Path
 from datetime import datetime
 import logging
+import pkg_resources
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -231,6 +231,13 @@ async def generate_python_script(task_description: str) -> str:
             response_data = response.json()
             response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
+            for package in python_dependencies:
+                try:
+                    # Check if package is installed
+                    pkg_resources.get_distribution(package)
+                except pkg_resources.DistributionNotFound:
+                    # If not installed, install it
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
             python_code = response_content['python_code']
             dependencies_str = ''.join(f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
             inline_metadata_script =f"""
@@ -287,6 +294,13 @@ Based on Error encountered while running task
             response_data = response.json()
             response_content = json.loads(response_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
+            for package in python_dependencies:
+                try:
+                    # Check if package is installed
+                    pkg_resources.get_distribution(package)
+                except pkg_resources.DistributionNotFound:
+                    # If not installed, install it
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
             python_code = response_content['python_code']
             dependencies_str = ''.join(
                 f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
@@ -425,8 +439,7 @@ async def read_file(path: str = Query(..., description="Path to the file to read
         raise HTTPException(status_code=400, detail="Path is empty.")
     if not path.startswith("/data/"):
         raise HTTPException(status_code=400, detail="Access to files outside /data is not allowed.")
-    requested_path = Path(os.path.abspath(os.path.join("./data", path.lstrip("/data/"))))
-    print(requested_path)
+    requested_path=Path(os.path.abspath(os.path.join("./data", path.replace("/data/", ""))))
     try:
         file_extension = requested_path.suffix.lower()
         if file_extension in [".txt", ".log", ".md", ".xml", ".yaml", ".yml", ".ini", ".conf", ".sql", ".bat", ".sh"]:
@@ -445,12 +458,6 @@ async def read_file(path: str = Query(..., description="Path to the file to read
             return FileResponse(requested_path, media_type=f"image/{file_extension.lstrip('.')}")
         else:
             return FileResponse(requested_path)
-    except UnicodeDecodeError as e:
-        raise HTTPException(status_code=500, detail="File encoding error.")
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail="File not found.")
-    except OSError as e:
-        raise HTTPException(status_code=500, detail="OS error occurred while reading the file.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
         
