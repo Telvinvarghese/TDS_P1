@@ -25,7 +25,6 @@ opencv-python-headless
 packaging
 pandas
 pillow
-pycparser
 pydantic
 pydub
 python-dateutil
@@ -34,7 +33,6 @@ python-frontmatter
 pytest
 pyyaml
 requests
-requests-html
 rich
 selenium
 sniffio
