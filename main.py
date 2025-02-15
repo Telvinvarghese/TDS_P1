@@ -39,8 +39,7 @@ app.add_middleware(
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIyZjIwMDAxNTBAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Po4ffWC8vCUNjE62Epu-JdCgfedBKQHaypJiy6tjyHI"
-# os.getenv("AIPROXY_TOKEN")
+API_KEY = os.getenv("AIPROXY_TOKEN")
 if not API_KEY:
     raise ValueError("API key missing")
 
@@ -244,10 +243,10 @@ async def generate_python_script(task_description: str) -> str:
                                           0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
             inbuild = sorted(set(sys.builtin_module_names) | {m.name for m in pkgutil.iter_modules()} | {m.name for m in pkgutil.iter_modules(site.getsitepackages())})
-            python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
+            non_inbuild_python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
             python_code = response_content['python_code']
             dependencies_str = ''.join(
-                f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
+                f'# "{dependency.get("module_name", "")}",\n'for dependency in non_inbuild_python_dependencies if dependency.get("module_name"))
             inline_metadata_script = f"""
 # /// script
 # requires-python = ">=3.11"
@@ -305,10 +304,10 @@ Based on Error encountered while running task
                                           0].get("message", {}).get("content", "").strip())
             python_dependencies = response_content['python_dependencies']
             inbuild = sorted(set(sys.builtin_module_names) | {m.name for m in pkgutil.iter_modules()} | {m.name for m in pkgutil.iter_modules(site.getsitepackages())})
-            python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
+            non_inbuild_python_dependencies = [dependency for dependency in python_dependencies if dependency.get("module_name") not in inbuild]
             python_code = response_content['python_code']
             dependencies_str = ''.join(
-                f'# "{dependency.get("module_name", "")}",\n'for dependency in python_dependencies if dependency.get("module_name"))
+                f'# "{dependency.get("module_name", "")}",\n'for dependency in non_inbuild_python_dependencies if dependency.get("module_name"))
             inline_metadata_script = f"""
 # /// script
 # requires-python = ">=3.11"
