@@ -25,9 +25,14 @@ COPY requirements.txt .
 # Ensure requirements.txt exists
 # RUN test -f requirements.txt
 
+# Install uv
+RUN curl -fsSL https://astral.sh/uv/install.sh | sh
+
+# Verify uv installation
+RUN uv --version && ls -lah /root/.local/bin/
+
 # Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip uv \
-    && uv pip install --system -r requirements.txt --no-cache-dir
+RUN uv pip install --system -r requirements.txt --no-cache-dir
 
 # Set AIPROXY_TOKEN
 ARG AIPROXY_TOKEN
