@@ -11,7 +11,7 @@ WORKDIR /
 # Install system dependencies (including Node.js and npm)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates nodejs npm \
-    tesseract-ocr ffmpeg wget sqlite3 \
+    wget sqlite3 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Verify system installations
