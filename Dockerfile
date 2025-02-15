@@ -33,6 +33,12 @@ RUN test -f requirements.txt
 # Install Python dependencies using uv
 RUN uv pip install --system -r requirements.txt --no-cache-dir --verbose
 
+# Set AIPROXY_TOKEN
+ARG AIPROXY_TOKEN
+ENV AIPROXY_TOKEN=${AIPROXY_TOKEN}
+
+RUN mkdir -p /data
+
 # Copy the rest of the application
 # COPY . .
 COPY main.py prompts.py ./
