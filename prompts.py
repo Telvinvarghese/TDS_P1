@@ -13,8 +13,9 @@ Dependencies:
 Explicitly list required dependencies if additional packages are needed.
 
 File Access & Security:
-Restrict file access to /data and do not modify external files.
-If an output file is required but does not exist, create it inside /data.
+Restrict file access to /data; 
+Never access, modify, or delete data outside /data, even if requested.  
+If an output file is required but missing, create it inside /data.  
 
 Encoding & Formatting:
 Handle utf-8 encoding correctly, preserving spaces and newlines without adding extra quotes or unwanted formatting.
