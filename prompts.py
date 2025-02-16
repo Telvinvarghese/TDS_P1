@@ -80,17 +80,43 @@ Code Templates:
 
 Image Text Extraction with gpt-4o-mini:
 ```
-import requests, os
+import requests, os, re, base64
 
 API_KEY, URL = os.getenv("AIPROXY_TOKEN"), "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
-def extract_text_image(base64_img, category):
+# Regex patterns for different categories
+REGEX_PATTERNS = {
+    "Numbers": r"\b\d+\b",
+    "Alphabetic": r"\b[a-zA-Z]+\b",
+    "Alphanumeric": r"\b[a-zA-Z0-9]+\b",
+    "Special Characters": r"[^a-zA-Z0-9\s]",
+    "Emails": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    "URLs": r"https?://\S+",
+    "Dates": r"\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
+    "Currency": r"[$€₹¥£]\s?\d+(?:,\d{3})*(?:\.\d{1,2})?",
+    "Phone Numbers": r"\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}",
+    "Card Numbers": r"\b(?:\d{4}[-.\s]?){3}\d{4}\b",
+}
+
+def image_to_base64(image_path):
+    with open(image_path, "rb") as img:
+        return base64.b64encode(img.read()).decode("utf-8")
+        
+def extract_text_image(base64_img, category=None):
     if not API_KEY: exit("Error: OpenAI API key missing.")
-    r = requests.post(URL, headers=HEADERS, json={"model": "gpt-4o-mini", "messages": [
-        {"role": "user", "content": [{"type": "text", "text": f"Extract {category} from image."},
-        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_img}"}}]}]})
-    return r.json().get("choices", [{}])[0].get("message", {}).get("content") if r.ok else None
+    r = requests.post(URL, headers=HEADERS, json={
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Extract {category if category else 'all text'} from image."},
+                {"type": "image", "image": f"data:image/png;base64,{base64_img}"}
+            ]}
+        ]
+    })
+    
+    text = r.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip() if r.ok else None
+    return re.findall(REGEX_PATTERNS[category], text) if text and category in REGEX_PATTERNS else text
 ```
 
 """
@@ -105,22 +131,29 @@ Compliance: No sensitive data, ethical handling
 Code Templates:
 Credit/Debit Card Number Extraction with gpt-4o-mini:
 ```
-import requests, os
+import requests, os, re, base64
 
+cc_regex = r'\b(?:\d[ -]?){12,15}\d\b'
 API_KEY, URL = os.getenv("AIPROXY_TOKEN"), "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
-def extract_credit_card_number(base64_image):
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [{
-            "role": "user",
-            "content": [{"type": "text", "text": "You are given an image containing a text. Extract the number from the image"},
-                        {"type": "image_url", "image_url": {"url":  f"data:image/png;base64,{base64_image}"}}]
-        }]
-    }
-    response = requests.post(URL, headers=HEADERS, json=payload)
-    return response.json().get("choices", [{}])[0].get("message", {}).get("content") if response.ok else None
+def image_to_base64(image_path):
+    with open(image_path, "rb") as img:
+        return base64.b64encode(img.read()).decode("utf-8")
+
+def extract_credit_card_number(image_path):
+    if not API_KEY:
+        exit("Error: OpenAI API key missing.")
+        
+    base64_image = image_to_base64(image_path)
+    
+    payload = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": [
+        {"type": "text", "text": "Extract the just number from this image."},
+        {"type": "image_url", "image_url": {"url": f"data:image/png;base64;base64,{base64_image}"}}
+    ]}]}
+
+    r = requests.post(URL, headers=HEADERS, json=payload)
+    return ["".join(re.findall(r'\d', m)) for m in re.findall(cc_regex, r.json().get("choices", [{}])[0].get("message", {}).get("content", ""))] if r.ok else None
 ```
 
 """
@@ -133,20 +166,34 @@ Files: Access only /data
 Compliance: No sensitive data, ethical handling
 
 Extraction Categories:
-Email: sender | recipient | both | all
+Email: sender | recipient | cc | bcc | from | to | both | all
 Code Templates:
 Email Extraction with gpt-4o-mini:
 ```
-import requests, os
+import requests, os, re
 
-API_KEY, URL = os.getenv("AIPROXY_TOKEN"), "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+API_KEY = os.getenv("AIPROXY_TOKEN")
+URL = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+EMAIL_REGEX = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 
 def extract_email(content, category):
-    if not API_KEY: exit("Error: OpenAI API key missing.")
-    r = requests.post(URL, headers=HEADERS, json={"model": "gpt-4o-mini", "messages": [
-        {"role": "user", "content": f"Extract the {category} email address from: {content}"}]})
-    return r.json().get("choices", [{}])[0].get("message", {}).get("content") if r.ok else None
+    if not API_KEY:
+        exit("Error: OpenAI API key missing.")
+
+    prompt = f"Extract the {category} email address from the following text: {content} and return { category if category in ['all','both'] else only} the {category} email address, nothing else"
+    try:
+        r = requests.post(URL, headers=HEADERS, json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}]})
+        if r.ok:
+            email = r.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            if re.match(EMAIL_REGEX, email):
+                return email  # Return if valid
+    except Exception as e:
+        print(f"API request failed: {e}")
+
+    # Fallback to regex if API fails or returns invalid data
+    matches = re.findall(EMAIL_REGEX, content)
+    return matches[0] if matches else None
 ```
 
 """
