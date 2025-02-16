@@ -41,8 +41,7 @@ app.add_middleware(
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIxZjEwMDQ4MjhAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LB-7IybHHcfSIg8cWiNXXwuxgJkELowh9aYhL5ylkDI"
-# os.getenv("AIPROXY_TOKEN")
+API_KEY = os.getenv("AIPROXY_TOKEN")
 
 if not API_KEY:
     raise ValueError("API key missing")
