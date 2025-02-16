@@ -403,7 +403,7 @@ async def run_task(task: str = Query(..., description="Task description")):
     os.makedirs("/data", exist_ok=True)
     os.chmod("/data", 0o777)
     translated_task = await translate_to_english(task)
-    task_description = translated_task["output"].strip().lower()
+    task_description = translated_task["output"]
 
     greetings = ["hi", "hello", "hey", "good morning",
                  "good afternoon", "good evening"]
