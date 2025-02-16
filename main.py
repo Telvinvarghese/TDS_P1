@@ -218,7 +218,7 @@ def set_conversation_history(task_description: str):
     if "llm" in task_description.lower() or "gpt" in task_description.lower():
         if "email" in task_description.lower():
             system_prompts = system_prompts + email_llm_prompts
-        elif "image" and "card number" in task_description.lower():
+        elif "image" in task_description.lower() and "card number" in task_description.lower():
             system_prompts = system_prompts + card_llm_prompts
         elif "image" in task_description.lower():
             system_prompts = system_prompts + image_llm_prompts
@@ -535,7 +535,7 @@ async def call_gpt(task_description: str) -> str:
     payload = {
         "model": "gpt-4o-mini",  # Ensure this model is valid
         "messages": [
-            {"role": "system", "content": f"Replace ' LLM ' with ' gpt-4o-mini ' in the task description.Replace '# of ' with ' no of ' in the task description. preserve words like 'only write' or 'write only' or 'just write' or 'write just' or 'return only' or 'save only' or 'just save' or 'write it' or write them' or 'write the number' or 'write the result'. Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
+            {"role": "system", "content": f"Replace ' LLM ' with ' gpt-4o-mini ' in the task description.Replace '# of ' with ' number of ' in the task description. preserve words like 'only write' or 'write only' or 'just write' or 'write just' or 'return only' or 'save only' or 'just save' or 'write it' or write them' or 'write the number' or 'write the result'. Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
             {"role": "user", "content": task_description}], "temperature": 0}
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
