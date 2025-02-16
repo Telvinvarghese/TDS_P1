@@ -11,6 +11,7 @@ If an output file is required but does not exist, create it inside /data.
 utf-8, raw text, preserve spaces/newlines, no extra quotes.
 Errors: Return "Input not found" for missing input, retry twice on errors.
 Compliance: No sensitive data, ethical handling
+
 """
 
 llm_prompts = """
@@ -41,6 +42,7 @@ def call_llm_api(payload):
     except requests.RequestException:
         return None
 ```
+
 """
 
 embedding_llm_prompts = """
@@ -60,6 +62,7 @@ def get_embedding(texts):
     r = requests.post(URL, headers=HEADERS, json={"model": "text-embedding-3-small", "input": texts})
     return r.json().get("data", [{}])[0].get("embedding") if r.ok else None
 ```
+
 """
 
 image_llm_prompts = """
@@ -89,6 +92,7 @@ def extract_text_image(base64_img, category):
         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_img}"}}]}]})
     return r.json().get("choices", [{}])[0].get("message", {}).get("content") if r.ok else None
 ```
+
 """
 
 card_llm_prompts = """
@@ -118,6 +122,7 @@ def extract_credit_card_number(base64_image):
     response = requests.post(URL, headers=HEADERS, json=payload)
     return response.json().get("choices", [{}])[0].get("message", {}).get("content") if response.ok else None
 ```
+
 """
 
 email_llm_prompts = """
@@ -143,6 +148,7 @@ def extract_email(content, category):
         {"role": "user", "content": f"Extract the {category} email address from: {content}"}]})
     return r.json().get("choices", [{}])[0].get("message", {}).get("content") if r.ok else None
 ```
+
 """
 
 prettier_prompts = """
@@ -156,6 +162,7 @@ def format_files_with_prettier(files, version):
 # Example usage
 format_files_with_prettier(["file.js", "file.css"])
 ```
+
 """
 
 black_prompts = """
@@ -170,6 +177,7 @@ def format_files_with_black(files,version):
 # Example usage
 format_files_with_black(["script.py"])
 ```
+
 """
 
 eslint_prompts = """
@@ -184,6 +192,7 @@ def lint_files_with_eslint(files, version="latest"):
 # Example usage
 lint_files_with_eslint(["file.js", "file.ts"])
 ```
+
 """
 
 date_format_prompts = """
@@ -208,6 +217,7 @@ def parse_date(date_str):
             continue
     raise ValueError(f"Invalid date: {date_str}")
 ```
+
 """
 
 sort_files_prompts = """
@@ -216,8 +226,10 @@ Sort JSON: data.sort(key=lambda x: [x.get(f) for f in sort_fields], reverse={Tru
 Sort CSV: sorted(csv_data, key=lambda x: [x[f] for f in sort_fields], reverse={True | False}). 
 Sort Text: sorted(text_lines, key=lambda x: x.lower(), reverse={True | False}).  
 Sort Text by Length: sorted(text_lines, key=lambda x: len(x), reverse={True | False}).
+
 """
 
 map_files_prompts = """
 maps each filename (without the /data/docs/ prefix) -> maps each filepath (without the /data/docs/ prefix)
+
 """
