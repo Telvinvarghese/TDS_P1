@@ -239,7 +239,7 @@ def set_conversation_history(task_description: str):
         system_prompts = system_prompts + date_format_prompts  
     elif "without the /data/docs/ prefix" in task_description.lower():
         task_description=task_description.replace("without the /data/docs/ prefix", "relative to /data/docs/")
-        system_prompts = system_prompt
+        system_prompts = system_prompt + map_files_prompts
     elif "sort" in task_description.lower():
         system_prompts = system_prompts + sort_files_prompts
     else:
