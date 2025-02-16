@@ -275,8 +275,3 @@ Sort Text: sorted(text_lines, key=lambda x: x.lower(), reverse={True | False}).
 Sort Text by Length: sorted(text_lines, key=lambda x: len(x), reverse={True | False}).
 
 """
-
-map_files_prompts = """
-(without the /data/docs/ prefix) : [path.replace("/data/docs/", "") for path in filepaths]
-
-"""
