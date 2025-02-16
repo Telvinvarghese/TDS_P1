@@ -275,3 +275,11 @@ Sort Text: sorted(text_lines, key=lambda x: x.lower(), reverse={True | False}).
 Sort Text by Length: sorted(text_lines, key=lambda x: len(x), reverse={True | False}).
 
 """
+
+map_files_prompts=""" 
+Remove any specified prefix (e.g., /data/docs/) from file paths and provide the result as a relative path. For tasks like mapping files to their titles, ensure the output file paths are relative and exclude the specified directory prefix. 
+Example:
+
+File: /data/docs/README.md → Output: README.md
+File: /data/docs/path/to/large-language-models.md → Output: path/to/large-language-models.md
+"""
