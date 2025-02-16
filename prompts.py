@@ -276,6 +276,6 @@ Sort Text by Length: sorted(text_lines, key=lambda x: len(x), reverse={True | Fa
 """
 
 map_files_prompts = """
-maps each filename (without the /data/docs/ prefix) -> maps each filepath (without the /data/docs/ prefix)
+(without the /data/docs/ prefix) : [path.replace("/data/docs/", "") for path in filepaths]
 
 """
