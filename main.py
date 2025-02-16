@@ -236,7 +236,7 @@ def set_conversation_history(task_description: str):
             system_prompts = system_prompts + eslint_prompts
     elif "contains a list of dates" or "list of dates" in task_description.lower():
         system_prompts = system_prompts + date_format_prompts  
-    elif "maps each filename(without the /data/docs/ prefix)" in task_description.lower():
+    elif "maps each filename (without the /data/docs/ prefix)" in task_description.lower():
         system_prompts = system_prompts + map_files_prompts
     elif "sort" in task_description.lower():
         system_prompts = system_prompts + sort_files_prompts
