@@ -24,7 +24,6 @@ Compliance: No sensitive data, ethical handling
 LLM Usage:
 
 Chat: gpt-4o-mini → response.json()["choices"][0]["message"]["content"]
-Embedding: text-embedding-3-small → response.json()["data"][0]["embedding"]
 API: http://aiproxy.sanand.workers.dev/openai/v1/
 Error Handling: Retry on failure, handle errors gracefully.
 
