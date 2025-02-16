@@ -222,11 +222,11 @@ def set_conversation_history(task_description: str):
             system_prompts = system_prompts + card_llm_prompts
         elif "image" in task_description.lower():
             system_prompts = system_prompts + image_llm_prompts
-        elif "embedding" in task_description.lower() or "similarity" in task_description.lower() or "similar pair" in task_description.lower():
+        elif " embeddings " in task_description.lower() or " similarity " in task_description.lower() or " similar pair " in task_description.lower():
             system_prompts = system_prompts + embedding_llm_prompts
         else:
             system_prompts = system_prompts + llm_prompts
-    elif "embedding" in task_description.lower() or "similarity" in task_description.lower() or "similar pair" in task_description.lower():
+    elif " embeddings " in task_description.lower() or " similarity " in task_description.lower() or " similar pair " in task_description.lower():
             system_prompts = system_prompts + embedding_llm_prompts
     elif "format" in task_description.lower():
         if "prettier" in task_description.lower():
@@ -235,15 +235,15 @@ def set_conversation_history(task_description: str):
             system_prompts = system_prompts + black_prompts
         elif "eslint" in task_description.lower():
             system_prompts = system_prompts + eslint_prompts
-    elif "contains a list of dates" in task_description.lower() or "list of dates" in task_description.lower():
+    elif "contains a list of dates" in task_description.lower() or "list of dates" in task_description.lower() or ".dates" in task_description.lower() or "day " in task_description.lower() or "days " in task_description.lower():
         system_prompts = system_prompts + date_format_prompts  
-    elif "maps " in task_description.lower() or "map " in task_description.lower() or "mapping " in task_description.lower():
+    elif " maps " in task_description.lower() or " map " in task_description.lower() or " mapping " in task_description.lower():
         task_description=task_description.replace("without the /data/docs/ prefix", "relative to /data/docs/")
         system_prompts = system_prompt + map_files_prompts
     elif "sort" in task_description.lower():
-        system_prompts = system_prompts + sort_files_prompts
+        system_prompts = system_prompts + sort_files_prompts + date_format_prompts
     else:
-        system_prompts = system_prompts
+        system_prompts = system_prompts + date_format_prompts 
     return [
         {"role": "system", "content": system_prompts},
         {"role": "user", "content": task_description}]
