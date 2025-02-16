@@ -41,7 +41,8 @@ app.add_middleware(
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = os.getenv("AIPROXY_TOKEN")
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIxZjEwMDQ4MjhAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LB-7IybHHcfSIg8cWiNXXwuxgJkELowh9aYhL5ylkDI"
+# os.getenv("AIPROXY_TOKEN")
 
 if not API_KEY:
     raise ValueError("API key missing")
@@ -211,7 +212,7 @@ response_format = {
     }
 }
 
-def conversation_history(task_description: str):
+def set_conversation_history(task_description: str):
     system_prompts = general_prompts
     if "llm" or "gpt" in task_description.lower():
         if "email" in task_description.lower():
@@ -247,7 +248,7 @@ def conversation_history(task_description: str):
 
 async def generate_python_script(task_description: str) -> str:
     # Always start with a new conversation history
-    conversation_history = conversation_history(task_description)
+    conversation_history = set_conversation_history(task_description)
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
@@ -310,7 +311,7 @@ Error:
 {error} 
 """
     # Always start with a new conversation history
-    conversation_history = conversation_history(update_task)
+    conversation_history = set_conversation_history(update_task)
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
