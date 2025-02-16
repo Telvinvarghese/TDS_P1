@@ -1,31 +1,40 @@
 general_prompts = """
-Role: AI programming assistant for optimized Python code.
-Purpose: Generate secure, efficient, and functional Python scripts with best practice
+Role: 
+AI programming assistant for optimized Python code.
 
-Guidelines
-Execution: Runs in a container with Python & uv pre-installed.
-Packages: Explicitly list dependencies.
-File Access: Restrict to /data, no external modification
-Output Handling
+Purpose: 
+Generate secure, efficient, and functional Python scripts without explanations, extra text, or formatting issues.
+
+Guidelines:
+Execution Environment:
+Ensure the code runs without errors in a container with Python and uv pre-installed.
+
+Dependencies:
+Explicitly list required dependencies if additional packages are needed.
+
+File Access & Security:
+Restrict file access to /data and do not modify external files.
 If an output file is required but does not exist, create it inside /data.
-utf-8, raw text, preserve spaces/newlines, no extra quotes.
-Errors: Return "Input not found" for missing input, retry twice on errors.
-Compliance: No sensitive data, ethical handling
+
+Encoding & Formatting:
+Handle utf-8 encoding correctly, preserving spaces and newlines without adding extra quotes or unwanted formatting.
+
+Error Handling & Stability:
+If input is missing, return "Input not found" instead of crashing.
+If an error occurs, retry twice before failing.
 
 """
 
 llm_prompts = """
 LLM Code Guidelines:
-Model: Use gpt-4o-mini for efficient, readable Python code.
-Processing: utf-8 encoding,handle csv, json, and txt formats.
-Files: Access only /data
-Compliance: No sensitive data, ethical handling
+Model: Use gpt-4o-mini to generate secure, efficient, and functional Python scripts.No extra explanations, unnecessary text, or formatting issues.
 
 LLM Usage:
-
 Chat: gpt-4o-mini → response.json()["choices"][0]["message"]["content"]
 API: http://aiproxy.sanand.workers.dev/openai/v1/
-Error Handling: Retry on failure, handle errors gracefully.
+Error Handling & Stability:
+If input is missing, return "Input not found" instead of crashing.
+If an error occurs, retry twice before failing.
 
 LLM Call Structure (gpt-4o-mini)
 ````
@@ -66,14 +75,11 @@ def get_embedding(texts):
 
 image_llm_prompts = """
 LLM Code Guidelines:
-Model: Use gpt-4o-mini for efficient, readable Python code.
-Processing: utf-8 encoding,handle csv, json, and txt formats.
-Files: Access only /data
-Compliance: No sensitive data, ethical handling
+Model: Use gpt-4o-mini to generate secure, efficient, and functional Python scripts.No extra explanations, unnecessary text, or formatting issues.
 
 Extraction Categories:
 
-Image Text: Numbers | Alphabetic | Alphanumeric | Special Characters | Multi-language | Emails | URLs | Dates | Currency | Phone Numbers | Card Numbers
+Image Text: Numbers | Alphabetic | Alphanumeric | Special Characters | Multi-language | Emails | URLs | Dates | Currency | Phone Numbers
 
 Code Templates:
 
@@ -95,7 +101,6 @@ REGEX_PATTERNS = {
     "Dates": r"\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
     "Currency": r"[$€₹¥£]\s?\d+(?:,\d{3})*(?:\.\d{1,2})?",
     "Phone Numbers": r"\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}",
-    "Card Numbers": r"\b(?:\d{4}[-.\s]?){3}\d{4}\b",
 }
 
 def image_to_base64(image_path):
@@ -122,10 +127,7 @@ def extract_text_image(base64_img, category=None):
 
 card_llm_prompts = """
 LLM Code Guidelines:
-Model: Use gpt-4o-mini for efficient, readable Python code.
-Processing: utf-8 encoding,handle csv, json, and txt formats.
-Files: Access only /data
-Compliance: No sensitive data, ethical handling
+Model: Use gpt-4o-mini to generate secure, efficient, and functional Python scripts.No extra explanations, unnecessary text, or formatting issues.
 
 Code Templates:
 Credit/Debit Card Number Extraction with gpt-4o-mini:
@@ -148,7 +150,7 @@ def extract_credit_card_number(image_path):
     
     payload = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": [
         {"type": "text", "text": "Extract the just number from this image."},
-        {"type": "image_url", "image_url": {"url": f"data:image/png;base64;base64,{base64_image}"}}
+        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
     ]}]}
 
     r = requests.post(URL, headers=HEADERS, json=payload)
@@ -159,13 +161,10 @@ def extract_credit_card_number(image_path):
 
 email_llm_prompts = """
 LLM Code Guidelines:
-Model: Use gpt-4o-mini for efficient, readable Python code.
-Processing: utf-8 encoding,handle csv, json, and txt formats.
-Files: Access only /data
-Compliance: No sensitive data, ethical handling
+Model: Use gpt-4o-mini to generate secure, efficient, and functional Python scripts.No extra explanations, unnecessary text, or formatting issues.
 
 Extraction Categories:
-Email: sender | recipient | cc | bcc | from | to | both | all
+Email: sender | from | recipient | to | cc | bcc | all
 Code Templates:
 Email Extraction with gpt-4o-mini:
 ```
@@ -180,19 +179,19 @@ def extract_email(content, category):
     if not API_KEY:
         exit("Error: OpenAI API key missing.")
 
-    prompt = f"Extract the {category} email address from the following text: {content} and return { category if category in ['all','both'] else only} the {category} email address, nothing else"
+    prompt = f"Extract the {category} email address from the following text: {content}. Return only the {category} email address, nothing else."
     try:
         r = requests.post(URL, headers=HEADERS, json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}]})
         if r.ok:
             email = r.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
             if re.match(EMAIL_REGEX, email):
-                return email  # Return if valid
+                return email if category != "all" else re.findall(EMAIL_REGEX, content)  # Return all emails if 'all'
     except Exception as e:
         print(f"API request failed: {e}")
 
     # Fallback to regex if API fails or returns invalid data
     matches = re.findall(EMAIL_REGEX, content)
-    return matches[0] if matches else None
+    return matches if category == "all" else (matches[0] if matches else None)
 ```
 
 """
@@ -231,7 +230,7 @@ Format Files:
 ```
 import subprocess
 
-def lint_files_with_eslint(files, version="latest"):
+def lint_files_with_eslint(files, version):
     subprocess.run(["npx", f"eslint@{version}", "--fix", *files], check=True)
 
 
@@ -259,9 +258,10 @@ def parse_date(date_str):
     for fmt in FORMATS:
         try:
             return datetime.strptime(date_str.strip(), fmt).date()
-        except ValueError:
+        except Exception as e:
+            print(f"Skipped format {fmt}: {e}")
             continue
-    raise ValueError(f"Invalid date: {date_str}")
+    raise None
 ```
 
 """
