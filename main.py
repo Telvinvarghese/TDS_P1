@@ -11,7 +11,10 @@ import sys
 import httpx
 import re
 import asyncio
-from prompts import system_prompts
+from prompts import general_prompts
+from prompts import llm_prompts, image_llm_prompts, email_llm_prompts, embedding_llm_prompts, card_llm_prompts
+from prompts import prettier_prompts,black_prompts,eslint_prompts
+from prompts import date_format_prompts, sort_files_prompts, map_files_prompts
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -34,12 +37,13 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-
 @app.get("/")
 async def home():
     return JSONResponse(content={"message": "Successfully rendering app"})
 
-API_KEY = os.getenv("AIPROXY_TOKEN")
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIxZjEwMDQ4MjhAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LB-7IybHHcfSIg8cWiNXXwuxgJkELowh9aYhL5ylkDI"
+# os.getenv("AIPROXY_TOKEN")
+
 if not API_KEY:
     raise ValueError("API key missing")
 
@@ -54,7 +58,6 @@ FORBIDDEN_TASKS = [
     "delete system files", "shutdown server", "access unauthorized data",
     "generate fake identity", "scrape personal data", "open ports", "send spam emails"
 ]
-
 
 def is_valid_task(task_description: str) -> bool:
     """
@@ -75,7 +78,6 @@ def is_valid_task(task_description: str) -> bool:
 
     return True
 
-
 FORBIDDEN_PATTERNS = [
     # File deletion + shell execution
     r"(rm\s|shutil\.rmtree|os\.remove|os\.rmdir|subprocess\.)",
@@ -85,13 +87,11 @@ FORBIDDEN_PATTERNS = [
     r"open\s*\(\s*['\"]?(/etc/passwd|/etc/shadow|/var/log)['\"]?\s*\)",
 ]
 
-
 def is_script_safe(script_code: str) -> bool:
     for pattern in FORBIDDEN_PATTERNS:
         if re.search(pattern, script_code):
             return False
     return True
-
 
 def write_cost_response(response):
     try:
@@ -100,7 +100,6 @@ def write_cost_response(response):
             json.dump(response_json, cost_file, indent=4)
     except Exception as e:
         print(f"Failed to write response: {e}")
-
 
 async def run_script(filename: str):
     try:
@@ -114,7 +113,6 @@ async def run_script(filename: str):
         return {"status": "error", "output": "Execution timed out!"}
     except Exception as e:
         return {"status": "error", "output": str(e)}
-
 
 async def download_and_run_script(script_url: str, user_email: str):
     print(f"Downloading and running script: {script_url}")
@@ -136,10 +134,8 @@ async def download_and_run_script(script_url: str, user_email: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
 def is_english_string(text: str) -> bool:
     return bool(re.match(r"^[\x00-\x7F]+$", text))
-
 
 async def translate_to_english(user_input: str) -> dict:
     if is_english_string(user_input):
@@ -216,12 +212,43 @@ response_format = {
     }
 }
 
+def conversation_history(task_description: str):
+    system_prompts = general_prompts
+    if "llm" or "gpt" in task_description.lower():
+        if "email" in task_description.lower():
+            system_prompts = system_prompts + email_llm_prompts
+        elif "image" and "card number" in task_description.lower():
+            system_prompts = system_prompts + card_llm_prompts
+        elif "image" in task_description.lower():
+            system_prompts = system_prompts + image_llm_prompts
+        elif "embedding" or "similarity" or "similar pair" in task_description.lower():
+            system_prompts = system_prompts + embedding_llm_prompts
+        else:
+            system_prompts = system_prompts + llm_prompts
+    elif "embedding" or "similarity" or "similar pair" in task_description.lower():
+            system_prompts = system_prompts + embedding_llm_prompts
+    elif "format" in task_description.lower():
+        if "prettier" in task_description.lower():
+            system_prompts = system_prompts + prettier_prompts
+        elif "black" in task_description.lower():
+            system_prompts = system_prompts + black_prompts
+        elif "eslint" in task_description.lower():
+            system_prompts = system_prompts + eslint_prompts
+    elif "contains a list of dates" or "list of dates" in task_description.lower():
+        system_prompts = system_prompts + date_format_prompts  
+    elif "maps each filename(without the / data/docs / prefix)" in task_description.lower():
+        system_prompts = system_prompts + map_files_prompts
+    elif "sort" in task_description.lower():
+        system_prompts = system_prompts + sort_files_prompts
+    else:
+        system_prompts = system_prompts
+    return [
+        {"role": "system", "content": system_prompts},
+        {"role": "user", "content": task_description}]
+
 async def generate_python_script(task_description: str) -> str:
     # Always start with a new conversation history
-    conversation_history = [
-        {"role": "system", "content": system_prompts},  # Keep system prompt
-        {"role": "user", "content": task_description}   # Fresh user input
-    ]
+    conversation_history = conversation_history(task_description)
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
@@ -270,7 +297,6 @@ async def generate_python_script(task_description: str) -> str:
         except Exception as e:
             raise HTTPException(
                 status_code=500, detail=f"Unexpected error: {str(e)}")
-
 
 async def resend_request(task_description: str, python_code: str, error: str) -> str:
     update_task = """
@@ -285,10 +311,7 @@ Error:
 {error} 
 """
     # Always start with a new conversation history
-    conversation_history = [
-        {"role": "system", "content": system_prompts},  # Keep system prompt
-        {"role": "user", "content": update_task}   # Fresh user input
-    ]
+    conversation_history = conversation_history(update_task)
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
@@ -337,7 +360,6 @@ Error:
         except Exception as e:
             raise HTTPException(
                 status_code=500, detail=f"Unexpected error: {str(e)}")
-
 
 def save_script(inline_metadata_script: str, python_code: str) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -411,8 +433,7 @@ async def run_task(task: str = Query(..., description="Task description")):
     try:
         # Normalize spaces (remove extra spaces and replace multiple spaces with a single space)
         task_description = re.sub(r'\s+', ' ', task_description.strip())
-        task_description = task_description.replace(
-            "```", "").replace("`", "").replace('"', "")
+        task_description = task_description.replace( "```", "").replace("`", "").replace('"', "")
         instructions_for_task = await call_gpt(task_description)
         run_type,response,script_path = await generate_python_script(instructions_for_task)
         execution_output = execute_script(run_type,script_path)
@@ -493,10 +514,13 @@ def write_to_file(filename, content):
 
 async def call_gpt(task_description: str) -> str:
     os.makedirs("/task_description", exist_ok=True)
+    def word_count(line): return len(line.split())
+    if word_count(task_description) < 10:
+        return task_description
     payload = {
         "model": "gpt-4o-mini",  # Ensure this model is valid
         "messages": [
-            {"role": "system", "content": f"Replace 'LLM' with 'GPT-4o-mini' in the task description. Improve clarity by refining phrases like 'Only write' or 'Just write.' Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
+            {"role": "system", "content": f"Replace ' LLM ' with ' gpt-4o-mini ' in the task description. Improve clarity by refining phrases like 'Only write' or 'Just write.' Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
             {"role": "user", "content": task_description}], "temperature": 0}
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
