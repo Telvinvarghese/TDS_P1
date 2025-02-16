@@ -31,8 +31,8 @@ LLM Code Guidelines:
 Model: Use gpt-4o-mini to generate secure, efficient, and functional Python scripts.No extra explanations, unnecessary text, or formatting issues.
 
 LLM Usage:
-Chat: gpt-4o-mini → response.json()["choices"][0]["message"]["content"]
-API: http://aiproxy.sanand.workers.dev/openai/v1/
+Chat: gpt-4o-mini → response.json().get("choices", [{}])[0].get("message", {}).get("content")
+API: http://aiproxy.sanand.workers.dev/openai/v1/chat/completions
 Error Handling & Stability:
 If input is missing, return "Input not found" instead of crashing.
 If an error occurs, retry twice before failing.
