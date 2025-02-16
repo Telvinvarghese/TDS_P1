@@ -237,7 +237,7 @@ def set_conversation_history(task_description: str):
             system_prompts = system_prompts + eslint_prompts
     elif "contains a list of dates" in task_description.lower() or "list of dates" in task_description.lower():
         system_prompts = system_prompts + date_format_prompts  
-    elif "without the /data/docs/ prefix" in task_description.lower():
+    elif "maps " in task_description.lower() or "map " in task_description.lower() or "mapping" in task_description.lower():
         task_description=task_description.replace("without the /data/docs/ prefix", "relative to /data/docs/")
         system_prompts = system_prompt + map_files_prompts
     elif "sort" in task_description.lower():
