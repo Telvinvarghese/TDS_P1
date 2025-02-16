@@ -214,18 +214,18 @@ response_format = {
 
 def set_conversation_history(task_description: str):
     system_prompts = general_prompts
-    if "llm" or "gpt" in task_description.lower():
+    if "llm" in task_description.lower() or "gpt" in task_description.lower():
         if "email" in task_description.lower():
             system_prompts = system_prompts + email_llm_prompts
         elif "image" and "card number" in task_description.lower():
             system_prompts = system_prompts + card_llm_prompts
         elif "image" in task_description.lower():
             system_prompts = system_prompts + image_llm_prompts
-        elif "embedding" or "similarity" or "similar pair" in task_description.lower():
+        elif "embedding" in task_description.lower() or "similarity" in task_description.lower() or "similar pair" in task_description.lower():
             system_prompts = system_prompts + embedding_llm_prompts
         else:
             system_prompts = system_prompts + llm_prompts
-    elif "embedding" or "similarity" or "similar pair" in task_description.lower():
+    elif "embedding" in task_description.lower() or "similarity" in task_description.lower() or "similar pair" in task_description.lower():
             system_prompts = system_prompts + embedding_llm_prompts
     elif "format" in task_description.lower():
         if "prettier" in task_description.lower():
@@ -234,7 +234,7 @@ def set_conversation_history(task_description: str):
             system_prompts = system_prompts + black_prompts
         elif "eslint" in task_description.lower():
             system_prompts = system_prompts + eslint_prompts
-    elif "contains a list of dates" or "list of dates" in task_description.lower():
+    elif "contains a list of dates" in task_description.lower() or "list of dates" in task_description.lower():
         system_prompts = system_prompts + date_format_prompts  
     elif "maps each filename (without the /data/docs/ prefix)" in task_description.lower():
         system_prompts = system_prompts + map_files_prompts
