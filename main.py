@@ -514,12 +514,12 @@ def write_to_file(filename, content):
 async def call_gpt(task_description: str) -> str:
     os.makedirs("/task_description", exist_ok=True)
     def word_count(line): return len(line.split())
-    if word_count(task_description) < 10:
+    if word_count(task_description) < 20:
         return task_description
     payload = {
         "model": "gpt-4o-mini",  # Ensure this model is valid
         "messages": [
-            {"role": "system", "content": f"Replace ' LLM ' with ' gpt-4o-mini ' in the task description. Improve clarity by refining phrases like 'Only write' or 'Just write.' Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
+            {"role": "system", "content": f"Replace ' LLM ' with ' gpt-4o-mini ' in the task description.Replace '# of ' with ' no of ' in the task description. preserve words like 'only write' or 'write only' or 'just write' or 'write just' or 'return only' or 'save only' or 'just save' or 'write it' or write them' or 'write the number' or 'write the result'. Keep the instructions short, simple, and clear while preserving the original meaning.: '{task_description}'"},
             {"role": "user", "content": task_description}], "temperature": 0}
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
