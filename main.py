@@ -300,15 +300,26 @@ async def generate_python_script(task_description: str) -> str:
 
 async def resend_request(task_description: str, python_code: str, error: str) -> str:
     update_task = """
-Fix the error in the Python code while ensuring it completes the given task.
-Task:
+Task Description:
 {task_description}
 
-Code:
+Error Message:
+{error}
+
+Original Code:
 {python_code}
 
-Error:
-{error} 
+Correction Guidelines:
+Provide only the corrected Python code without explanations, extra text, or formatting issues.
+Ensure the code runs without errors in a container with Python and uv pre-installed.
+Explicitly list any required dependencies if additional packages are needed.
+Restrict file access to /data and do not modify external files.
+If an output file is required but does not exist, create it inside /data.
+Handle utf-8 encoding correctly, preserving spaces and newlines without extra quotes.
+If input is missing, return "Input not found" instead of crashing.
+If an error occurs, retry twice before failing.
+Make sure the code is simple, direct, and error-free this time. And try not to mess it up like before.
+
 """
     # Always start with a new conversation history
     conversation_history = set_conversation_history(update_task)
